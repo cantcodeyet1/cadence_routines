@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
@@ -121,26 +121,9 @@ export function AddRoutine() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {habits.map((h, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "2px solid var(--ink)", borderRadius: 13, padding: "10px 12px" }}>
-              <IconDrag color="var(--muted-2)" />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800 }}>
-                  {h.name}
-                  {h.existingHabitId && (
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--teal)", marginLeft: 6 }}>EXISTING</span>
-                  )}
-                </div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
-                  {TYPES.find((t) => t.value === h.type)?.label}
-                  {h.type !== "TICK" && h.targetSec ? ` · ${Math.round(h.targetSec / 60)} min` : ""}
-                </div>
-              </div>
-              <button onClick={() => removeHabit(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)" }}>
-                <IconTrash />
-              </button>
-            </div>
-          ))}
+          {habits.length > 0 && (
+            <DraggableHabitList habits={habits} setHabits={setHabits} onRemove={removeHabit} />
+          )}
 
           {showHabitPicker ? (
             <HabitPicker alreadyAdded={habits} onAdd={addHabit} onCancel={() => setShowHabitPicker(false)} />
@@ -184,6 +167,100 @@ export function AddRoutine() {
         </button>
       </div>
     </div>
+  );
+}
+
+// Press-and-drag reordering (mouse + touch via Pointer Events). Dragging the
+// handle re-sorts the live array as soon as the pointer crosses into a
+// neighboring row's half, rather than waiting for drop.
+function DraggableHabitList({ habits, setHabits, onRemove }) {
+  const [dragIndex, setDragIndex] = useState(null);
+  const rowRefs = useRef([]);
+  const dragState = useRef({ startY: 0, index: 0, rowHeight: 60 });
+
+  function onPointerDown(e, index) {
+    e.preventDefault();
+    const row = rowRefs.current[index];
+    const rowHeight = (row?.offsetHeight ?? 60) + 8; // + gap
+    dragState.current = { startY: e.clientY, index, rowHeight };
+    setDragIndex(index);
+    e.target.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e) {
+    if (dragIndex === null) return;
+    const { startY, index, rowHeight } = dragState.current;
+    const delta = e.clientY - startY;
+    const shift = Math.round(delta / rowHeight);
+    if (shift === 0) return;
+
+    const nextIndex = Math.max(0, Math.min(habits.length - 1, index + shift));
+    if (nextIndex === index) return;
+
+    setHabits((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(nextIndex, 0, moved);
+      return next;
+    });
+    dragState.current = { startY: e.clientY, index: nextIndex, rowHeight };
+    setDragIndex(nextIndex);
+  }
+
+  function onPointerUp() {
+    setDragIndex(null);
+  }
+
+  return (
+    <>
+      {habits.map((h, i) => (
+        <div
+          key={h._key ?? i}
+          ref={(el) => (rowRefs.current[i] = el)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "#fff",
+            border: `2px solid ${dragIndex === i ? "var(--orange)" : "var(--ink)"}`,
+            borderRadius: 13,
+            padding: "10px 12px",
+            boxShadow: dragIndex === i ? "3px 3px 0 var(--ink)" : "none",
+            position: "relative",
+            zIndex: dragIndex === i ? 2 : 1,
+            touchAction: "none",
+          }}
+        >
+          <div style={{ width: 18, fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
+            {i + 1}
+          </div>
+          <div
+            onPointerDown={(e) => onPointerDown(e, i)}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            style={{ cursor: "grab", display: "flex", touchAction: "none" }}
+          >
+            <IconDrag color="var(--muted-2)" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800 }}>
+              {h.name}
+              {h.existingHabitId && (
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--teal)", marginLeft: 6 }}>EXISTING</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
+              {TYPES.find((t) => t.value === h.type)?.label}
+              {h.type !== "TICK" && h.targetSec ? ` · ${Math.round(h.targetSec / 60)} min` : ""}
+            </div>
+          </div>
+          <button onClick={() => onRemove(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)" }}>
+            <IconTrash />
+          </button>
+        </div>
+      ))}
+    </>
   );
 }
 

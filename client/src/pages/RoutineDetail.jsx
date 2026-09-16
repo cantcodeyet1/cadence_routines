@@ -49,7 +49,8 @@ export function RoutineDetail() {
         <div style={{ width: 40 }} />
       </div>
 
-      <div
+      <Link
+        to={`/routines/${routine.id}/milestones`}
         className="card card-pop"
         style={{
           margin: "18px 20px 0",
@@ -59,10 +60,11 @@ export function RoutineDetail() {
           display: "flex",
           alignItems: "center",
           gap: 14,
+          textDecoration: "none",
         }}
       >
         <IconFlame width={26} height={26} color="#FFB020" />
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "#fff" }}>
             {routine.currentStreak} day streak
           </div>
@@ -70,31 +72,17 @@ export function RoutineDetail() {
             best ever: {routine.bestStreak} &middot; {doneCount}/{routine.habits.length} done today
           </div>
         </div>
-      </div>
-
-      <Link
-        to={`/routines/${routine.id}/milestones`}
-        style={{
-          margin: "10px 20px 0",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          background: "#fff",
-          border: "2px solid var(--ink)",
-          borderRadius: 13,
-          padding: "11px 14px",
-          textDecoration: "none",
-          color: "var(--ink)",
-        }}
-      >
-        <IconFlame color="var(--orange)" />
-        <div style={{ flex: 1, fontSize: 14, fontWeight: 800 }}>View milestones</div>
-        <IconChevronRight color="var(--muted-2)" />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+          <IconChevronRight color="rgba(255,255,255,0.85)" />
+          <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.75)", whiteSpace: "nowrap" }}>
+            milestones
+          </div>
+        </div>
       </Link>
 
       <div style={{ marginTop: 22, padding: "0 20px", display: "flex", flexDirection: "column", gap: 8 }}>
         <div className="field-label">Habits</div>
-        {routine.habits.map((h) => {
+        {routine.habits.map((h, i) => {
           const TypeIcon = TYPE_ICON[h.type];
           const done = !!h.log?.completedAt;
           const skipped = !!h.log?.skipped;
@@ -104,7 +92,7 @@ export function RoutineDetail() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 12,
+                gap: 10,
                 background: "#fff",
                 border: `2px solid ${done ? "var(--teal)" : "var(--ink)"}`,
                 borderRadius: 13,
@@ -112,6 +100,9 @@ export function RoutineDetail() {
                 opacity: skipped ? 0.6 : 1,
               }}
             >
+              <div style={{ width: 16, fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
+                {i + 1}
+              </div>
               <div
                 style={{
                   width: 32,
@@ -152,12 +143,20 @@ export function RoutineDetail() {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {history?.sessions.map((s) => (
             <div key={s.id} className="card" style={{ padding: "12px 14px" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
-                {formatDate(s.date)}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{formatDate(s.date)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>
+                  {s.startedAt && s.completedAt
+                    ? `${formatClock(s.startedAt)} – ${formatClock(s.completedAt)}`
+                    : formatClock(s.completedAt)}
+                </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {s.logs.map((l) => (
                   <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+                    <div style={{ width: 13, fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
+                      {l.position}
+                    </div>
                     <div
                       style={{
                         width: 6,

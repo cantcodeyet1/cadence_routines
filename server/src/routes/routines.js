@@ -30,6 +30,7 @@ async function routineCardData(routine, dateOnly) {
     color: routine.color,
     currentStreak: routine.currentStreak,
     bestStreak: routine.bestStreak,
+    weekdays: routine.days?.map((d) => d.weekday) ?? [],
     habitCount,
     doneCount,
     xpLeft,
@@ -48,6 +49,7 @@ routinesRouter.get("/", async (req, res, next) => {
     const routines = await prisma.routine.findMany({
       where: req.query.all === "true" ? {} : { days: { some: { weekday } } },
       orderBy: { createdAt: "asc" },
+      include: { days: true },
     });
 
     const cards = await Promise.all(routines.map((r) => routineCardData(r, dateOnly)));
@@ -131,11 +133,13 @@ routinesRouter.get("/:id/history", async (req, res, next) => {
       sessions: sessions.map((s) => ({
         id: s.id,
         date: s.date.toISOString().slice(0, 10),
+        startedAt: s.startedAt,
         completedAt: s.completedAt,
         note: s.note,
         logs: s.logs
           .sort((a, b) => (a.startedAt ?? a.completedAt) - (b.startedAt ?? b.completedAt))
-          .map((l) => ({
+          .map((l, i) => ({
+            position: i + 1,
             habitId: l.habitId,
             habitName: l.habit.name,
             startedAt: l.startedAt,

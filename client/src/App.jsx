@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { warmCache } from "./lib/warm.js";
 import { Home } from "./pages/Home.jsx";
+import { AllRoutines } from "./pages/AllRoutines.jsx";
 import { RoutineDetail } from "./pages/RoutineDetail.jsx";
 import { RoutineMilestones } from "./pages/RoutineMilestones.jsx";
 import { Session } from "./pages/Session.jsx";
@@ -20,6 +21,7 @@ export default function App() {
     <div className="app-shell">
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/routines" element={<AllRoutines />} />
         <Route path="/routines/new" element={<AddRoutine />} />
         <Route path="/routines/:routineId" element={<RoutineDetail />} />
         <Route path="/routines/:routineId/session" element={<Session />} />

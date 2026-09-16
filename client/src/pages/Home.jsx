@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { currentWeek, toDateKey, weekdayName } from "../lib/week.js";
 import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { RoutineCard } from "../components/RoutineCard.jsx";
-import { IconPlus } from "../components/Icons.jsx";
 
 // Days for the whole week are pre-warmed by warmCache() (see App.jsx / lib/warm.js).
 export function Home() {
@@ -17,10 +15,6 @@ export function Home() {
 
   return (
     <div className="page">
-      <Link to="/routines/new" className="fab" aria-label="New routine">
-        <IconPlus color="#fff" />
-      </Link>
-
       <div className="top-bar" style={{ justifyContent: "space-between" }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700 }}>Cadence</div>
       </div>
@@ -80,7 +74,7 @@ export function Home() {
         <div className="center-empty">
           Nothing scheduled for {weekdayName(selected).toLowerCase()}.
           <br />
-          Tap + to create a routine.
+          Head to the Routines tab to create one.
         </div>
       )}
 
