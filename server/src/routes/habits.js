@@ -101,6 +101,19 @@ habitsRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+// DELETE /api/habits/:id
+// A habit can belong to more than one routine - deleting it removes it from
+// all of them (RoutineHabit cascades) along with every logged completion of
+// it (HabitLog cascades). The routines and sessions it was part of stay.
+habitsRouter.delete("/:id", async (req, res, next) => {
+  try {
+    await prisma.habit.delete({ where: { id: req.params.id } });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/habits  -- create a standalone habit (not yet attached to a routine)
 habitsRouter.post("/", async (req, res, next) => {
   try {

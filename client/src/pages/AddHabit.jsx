@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { IconClose, IconCheck, IconTimer, IconCountUp } from "../components/Icons.jsx";
+import { invalidate } from "../lib/cache.js";
+import { currentWeek, toDateKey } from "../lib/week.js";
+import { DeleteConfirmSheet } from "../components/DeleteConfirmSheet.jsx";
+import { IconClose, IconCheck, IconTimer, IconCountUp, IconTrash } from "../components/Icons.jsx";
 
 const TYPES = [
   { value: "TICK", label: "Tick", Icon: IconCheck },
@@ -23,6 +26,9 @@ export function AddHabit() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [routineIds, setRoutineIds] = useState([]); // routines this habit is in, for cache invalidation on delete
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -33,6 +39,7 @@ export function AddHabit() {
         setType(h.type);
         if (h.targetSec) setMinutes(Math.max(1, Math.round(h.targetSec / 60)));
         setColorTag(h.colorTag);
+        setRoutineIds(h.routines.map((r) => r.id));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -66,6 +73,25 @@ export function AddHabit() {
     }
   }
 
+  async function deleteHabit() {
+    setDeleting(true);
+    try {
+      await api.deleteHabit(habitId);
+      const today = toDateKey(new Date());
+      invalidate([
+        "habits",
+        "routines:all",
+        ...currentWeek().map((d) => `routines:${d.key}`),
+        ...routineIds.flatMap((id) => [`routine:${id}:${today}`, `routine-history:${id}`]),
+      ]);
+      navigate("/habits");
+    } catch (err) {
+      setError(err.message);
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
   if (loading) return <div className="center-loading">Loading...</div>;
 
   return (
@@ -75,7 +101,13 @@ export function AddHabit() {
           <IconClose />
         </button>
         <div className="title-lg">{isEdit ? "Edit Habit" : "New Habit"}</div>
-        <div style={{ width: 40 }} />
+        {isEdit ? (
+          <button className="icon-btn" aria-label="Delete habit" onClick={() => setConfirmingDelete(true)}>
+            <IconTrash color="var(--red)" />
+          </button>
+        ) : (
+          <div style={{ width: 40 }} />
+        )}
       </div>
 
       <div style={{ padding: "22px 20px 0", flex: 1 }}>
@@ -143,10 +175,25 @@ export function AddHabit() {
       </div>
 
       <div style={{ padding: "16px 20px 26px" }}>
-        <button className="btn" onClick={submit} disabled={saving}>
+        <button className={`btn${saving ? " pressed" : ""}`} onClick={submit} disabled={saving}>
           {saving ? "Saving..." : isEdit ? "Save changes" : "Add habit"}
         </button>
       </div>
+
+      {confirmingDelete && (
+        <DeleteConfirmSheet
+          title={`Delete ${name || "this habit"}?`}
+          subtitle={
+            routineIds.length > 0
+              ? `This removes it from ${routineIds.length} routine${routineIds.length === 1 ? "" : "s"} and its logged history for good.`
+              : "This removes its logged history for good."
+          }
+          confirmLabel="Delete habit"
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={deleteHabit}
+          deleting={deleting}
+        />
+      )}
     </div>
   );
 }

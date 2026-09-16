@@ -34,6 +34,7 @@ export const api = {
   getHabit: (id) => request(`/api/habits/${id}`),
   createHabit: (data) => request("/api/habits", { method: "POST", body: JSON.stringify(data) }),
   updateHabit: (id, data) => request(`/api/habits/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteHabit: (id) => request(`/api/habits/${id}`, { method: "DELETE" }),
 
   startSession: (routineId, date) =>
     request("/api/sessions/start", { method: "POST", body: JSON.stringify({ routineId, date }) }),
