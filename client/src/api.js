@@ -20,6 +20,7 @@ export const api = {
   createRoutine: (data) =>
     request("/api/routines", { method: "POST", body: JSON.stringify(data) }),
   updateRoutine: (id, data) => request(`/api/routines/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteRoutine: (id) => request(`/api/routines/${id}`, { method: "DELETE" }),
   addHabitToRoutine: (routineId, data) =>
     request(`/api/routines/${routineId}/habits`, { method: "POST", body: JSON.stringify(data) }),
   removeHabitFromRoutine: (routineId, routineHabitId) =>

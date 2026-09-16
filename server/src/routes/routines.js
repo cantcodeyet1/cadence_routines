@@ -155,6 +155,19 @@ routinesRouter.patch("/:id", async (req, res, next) => {
   }
 });
 
+// DELETE /api/routines/:id
+// Removes the routine along with its schedule, habit links and session
+// history (all cascade). The habits themselves aren't touched - they're
+// independent records that can belong to other routines too.
+routinesRouter.delete("/:id", async (req, res, next) => {
+  try {
+    await prisma.routine.delete({ where: { id: req.params.id } });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/routines/:id/habits/reorder  -- persist a new habit order
 // body: { order: [routineHabitId, ...] }  (full list, in the new order)
 routinesRouter.patch("/:id/habits/reorder", async (req, res, next) => {

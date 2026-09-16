@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
+import { invalidate } from "../lib/cache.js";
+import { currentWeek, toDateKey } from "../lib/week.js";
 import { HabitPicker, TYPES } from "../components/HabitPicker.jsx";
 import { DraggableList } from "../components/DraggableList.jsx";
 import { IconBack, IconPlus, IconTrash, IconQuote } from "../components/Icons.jsx";
@@ -33,6 +35,9 @@ export function AddRoutine() {
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [habitIds, setHabitIds] = useState([]); // this routine's habit ids, for cache invalidation on delete
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -43,6 +48,7 @@ export function AddRoutine() {
         setColor(r.color);
         setQuote(r.quote || "");
         setWeekdays(new Set(r.weekdays));
+        setHabitIds(r.habits.map((h) => h.id));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -98,6 +104,25 @@ export function AddRoutine() {
     }
   }
 
+  async function deleteRoutine() {
+    setDeleting(true);
+    try {
+      await api.deleteRoutine(routineId);
+      invalidate([
+        "routines:all",
+        ...currentWeek().map((d) => `routines:${d.key}`),
+        `routine:${routineId}:${toDateKey(new Date())}`,
+        `routine-history:${routineId}`,
+        ...habitIds.map((id) => `habit:${id}`),
+      ]);
+      navigate("/routines");
+    } catch (err) {
+      setError(err.message);
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }
+
   if (loading) return <div className="center-loading">Loading...</div>;
 
   return (
@@ -107,7 +132,18 @@ export function AddRoutine() {
           <IconBack />
         </button>
         <div className="title-lg">{isEdit ? "Edit Routine" : "New Routine"}</div>
-        <div style={{ width: 40 }} />
+        {isEdit ? (
+          <button
+            className="icon-btn"
+            aria-label="Delete routine"
+            onClick={() => setConfirmingDelete(true)}
+            style={{ color: "var(--red)" }}
+          >
+            <IconTrash color="var(--red)" />
+          </button>
+        ) : (
+          <div style={{ width: 40 }} />
+        )}
       </div>
 
       <div style={{ padding: "20px 20px 0", flex: 1 }}>
@@ -252,6 +288,91 @@ export function AddRoutine() {
         <button className={`btn indigo${saving ? " pressed" : ""}`} onClick={submit} disabled={saving}>
           {saving ? "Saving..." : isEdit ? "Save changes" : "Create routine"}
         </button>
+      </div>
+
+      {confirmingDelete && (
+        <DeleteConfirmSheet
+          name={name}
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={deleteRoutine}
+          deleting={deleting}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeleteConfirmSheet({ name, onCancel, onConfirm, deleting }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 20 }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(36,30,61,0.55)" }} onClick={deleting ? undefined : onCancel} />
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "#fff",
+          border: "2.5px solid var(--ink)",
+          borderBottom: "none",
+          borderRadius: "26px 26px 0 0",
+          padding: "26px 22px 30px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ width: 36, height: 5, borderRadius: 3, background: "var(--border-soft)" }} />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 16,
+              background: "var(--red)",
+              border: "2.5px solid var(--ink)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <IconTrash width={22} height={22} color="#fff" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 600 }}>Delete {name || "this routine"}?</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600, marginTop: 2 }}>
+              This removes its schedule and session history for good.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
+          <button
+            className={`btn${deleting ? " pressed" : ""}`}
+            style={{ background: "var(--red)" }}
+            onClick={onConfirm}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting..." : "Delete routine"}
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={deleting}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--muted)",
+              fontFamily: "var(--font-display)",
+              fontSize: 13,
+              fontWeight: 600,
+              padding: 6,
+              cursor: deleting ? "default" : "pointer",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
