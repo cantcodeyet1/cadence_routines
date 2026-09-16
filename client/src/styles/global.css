@@ -1,0 +1,311 @@
+@import "./tokens.css";
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #2a2438;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+button, input, textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--orange);
+}
+
+/* The app renders as a phone-width column centered on the page, so it reads
+   sensibly on desktop too while staying true to the mobile-first design. */
+.app-shell {
+  max-width: 430px;
+  min-height: 100vh;
+  margin: 0 auto;
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 8px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 26px 20px 0;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.title-lg {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.section-label {
+  padding: 24px 20px 0;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card {
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.card-pop {
+  border-width: 2.5px;
+  box-shadow: var(--shadow-offset);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  border: 2.5px solid var(--ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-offset);
+  padding: 15px;
+  cursor: pointer;
+  color: #fff;
+  background: var(--orange);
+  width: 100%;
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.btn.secondary {
+  background: #fff;
+  color: var(--ink);
+}
+
+.btn.teal { background: var(--teal); }
+.btn.purple { background: var(--purple); }
+.btn.indigo { background: var(--indigo); }
+
+.field-label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.text-input {
+  width: 100%;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 13px;
+  padding: 12px 15px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.text-input::placeholder {
+  color: var(--muted-2);
+  font-weight: 600;
+}
+
+.day-chip {
+  flex: 1;
+  text-align: center;
+  padding: 9px 0;
+  border-radius: 10px;
+  background: #fff;
+  border: 2px solid var(--border-soft-2);
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted-2);
+  cursor: pointer;
+}
+
+.day-chip.active {
+  background: var(--indigo);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+/* bottom nav */
+.bottom-nav {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 12px 18px;
+  border-top: 2.5px solid var(--ink);
+  background: #fff;
+  position: sticky;
+  bottom: 0;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-item .icon-slot {
+  width: 38px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-item.active .icon-slot {
+  border-radius: 11px;
+  background: #ffe9c7;
+  border: 2px solid var(--ink);
+}
+
+.nav-item .nav-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.nav-item.active .nav-label {
+  font-weight: 700;
+  color: var(--orange);
+}
+
+.fab {
+  position: absolute;
+  right: 20px;
+  bottom: 98px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--orange);
+  border: 2.5px solid var(--ink);
+  box-shadow: var(--shadow-offset);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.toggle-pill {
+  display: flex;
+  background: #f0e4ce;
+  border: 2px solid var(--ink);
+  border-radius: 100px;
+  padding: 4px;
+}
+
+.toggle-pill button {
+  flex: 1;
+  text-align: center;
+  border: none;
+  background: transparent;
+  border-radius: 100px;
+  padding: 8px;
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.toggle-pill button.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.switch {
+  width: 48px;
+  height: 28px;
+  border-radius: 100px;
+  border: 2px solid var(--ink);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: var(--border-soft);
+}
+
+.switch.on {
+  background: var(--teal);
+}
+
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  transition: left 0.15s ease;
+}
+
+.switch.on .knob {
+  left: 22px;
+}
+
+.center-loading, .center-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 40px 20px;
+  text-align: center;
+}

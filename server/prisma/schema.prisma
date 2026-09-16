@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HabitType {
+  TICK
+  COUNTDOWN
+  COUNTUP
+}
+
+model Routine {
+  id                String           @id @default(cuid())
+  name              String
+  color             String           @default("#7C5CFC")
+  currentStreak     Int              @default(0)
+  bestStreak        Int              @default(0)
+  lastCompletedDate DateTime?        @db.Date
+  createdAt         DateTime         @default(now())
+  days              RoutineDay[]
+  habits            RoutineHabit[]
+  sessions          RoutineSession[]
+}
+
+model RoutineDay {
+  id        String  @id @default(cuid())
+  routineId String
+  routine   Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  weekday   Int // 0 = Sunday ... 6 = Saturday
+
+  @@unique([routineId, weekday])
+}
+
+model Habit {
+  id                String         @id @default(cuid())
+  name              String
+  type              HabitType      @default(TICK)
+  targetSec         Int? // countdown target, or count-up goal (optional)
+  xpValue           Int            @default(10)
+  colorTag          String         @default("#7C5CFC")
+  currentStreak     Int            @default(0)
+  bestStreak        Int            @default(0)
+  lastCompletedDate DateTime?      @db.Date
+  createdAt         DateTime       @default(now())
+  routines          RoutineHabit[]
+  logs              HabitLog[]
+}
+
+model RoutineHabit {
+  id        String  @id @default(cuid())
+  routineId String
+  routine   Routine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  habitId   String
+  habit     Habit   @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  position  Int     @default(0)
+  required  Boolean @default(true)
+
+  @@unique([routineId, habitId])
+}
+
+model RoutineSession {
+  id          String     @id @default(cuid())
+  routineId   String
+  routine     Routine    @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  date        DateTime   @db.Date // calendar day this session belongs to
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+  note        String?
+  logs        HabitLog[]
+
+  @@unique([routineId, date])
+}
+
+model HabitLog {
+  id          String         @id @default(cuid())
+  sessionId   String
+  session     RoutineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  habitId     String
+  habit       Habit          @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  completedAt DateTime?
+  durationSec Int?
+  note        String?
+  skipped     Boolean        @default(false)
+
+  @@unique([sessionId, habitId])
+}

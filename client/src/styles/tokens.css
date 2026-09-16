@@ -1,0 +1,28 @@
+:root {
+  --cream: #fff6e8;
+  --ink: #241e3d;
+  --muted: #9c8f70;
+  --muted-2: #b3a688;
+  --border-soft: #e4dbc8;
+  --border-soft-2: #d8cdb0;
+
+  --orange: #ff6b35;
+  --teal: #06b6a4;
+  --purple: #7c5cfc;
+  --amber: #ffb020;
+  --indigo: #4c6ef5;
+  --red: #d14343;
+  --red-bg: #fdedec;
+  --red-border: #f3c6c6;
+
+  --font-display: "Fredoka", sans-serif;
+  --font-body: "Nunito", system-ui, sans-serif;
+
+  --radius-lg: 18px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --shadow-offset: 4px 4px 0 var(--ink);
+  --shadow-offset-sm: 2px 2px 0 var(--ink);
+  --shadow-offset-lg: 5px 5px 0 var(--ink);
+}
