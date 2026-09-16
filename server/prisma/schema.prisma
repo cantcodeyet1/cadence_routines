@@ -17,6 +17,7 @@ model Routine {
   id                String           @id @default(cuid())
   name              String
   color             String           @default("#7C5CFC")
+  quote             String?
   currentStreak     Int              @default(0)
   bestStreak        Int              @default(0)
   lastCompletedDate DateTime?        @db.Date

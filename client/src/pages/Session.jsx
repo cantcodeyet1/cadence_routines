@@ -430,6 +430,14 @@ function RoutineSummary({ routine, summary, onClose }) {
         </div>
       )}
 
+      {summary.quote && (
+        <div style={{ margin: "22px 20px 0", textAlign: "center", padding: "0 12px" }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 15.5, fontStyle: "italic", color: "var(--ink)", lineHeight: 1.5 }}>
+            &ldquo;{summary.quote}&rdquo;
+          </div>
+        </div>
+      )}
+
       <div style={{ marginTop: "auto", padding: "16px 20px 26px" }}>
         <button className="btn purple" onClick={onClose}>Back to home</button>
       </div>

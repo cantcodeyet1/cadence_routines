@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import { Home } from "./pages/Home.jsx";
+import { RoutineDetail } from "./pages/RoutineDetail.jsx";
 import { Session } from "./pages/Session.jsx";
 import { AllHabits } from "./pages/AllHabits.jsx";
 import { HabitDetail } from "./pages/HabitDetail.jsx";
@@ -14,6 +15,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/routines/new" element={<AddRoutine />} />
+        <Route path="/routines/:routineId" element={<RoutineDetail />} />
         <Route path="/routines/:routineId/session" element={<Session />} />
         <Route path="/habits" element={<AllHabits />} />
         <Route path="/habits/new" element={<AddHabit />} />

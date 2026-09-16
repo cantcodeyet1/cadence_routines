@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
-import { IconBack, IconPlus, IconTrash, IconDrag } from "../components/Icons.jsx";
+import { useCachedData } from "../lib/cache.js";
+import { IconBack, IconPlus, IconTrash, IconDrag, IconCheck } from "../components/Icons.jsx";
 
 const COLORS = ["#7C5CFC", "#4C6EF5", "#06B6A4", "#FF6B35", "#FFB020"];
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -17,9 +18,10 @@ export function AddRoutine() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [color, setColor] = useState(COLORS[0]);
+  const [quote, setQuote] = useState("");
   const [weekdays, setWeekdays] = useState(new Set([1, 2, 3, 4, 5]));
   const [habits, setHabits] = useState([]);
-  const [showHabitForm, setShowHabitForm] = useState(false);
+  const [showHabitPicker, setShowHabitPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,7 +35,7 @@ export function AddRoutine() {
 
   function addHabit(habit) {
     setHabits((prev) => [...prev, habit]);
-    setShowHabitForm(false);
+    setShowHabitPicker(false);
   }
 
   function removeHabit(i) {
@@ -48,11 +50,12 @@ export function AddRoutine() {
     setSaving(true);
     setError(null);
     try {
-      const res = await api.createRoutine({
+      await api.createRoutine({
         name,
         color,
+        quote: quote.trim() || null,
         weekdays: [...weekdays],
-        habits: habits.map((h) => ({ ...h, colorTag: color })),
+        habits: habits.map((h) => (h.existingHabitId ? h : { ...h, colorTag: color })),
       });
       navigate("/");
     } catch (err) {
@@ -122,7 +125,12 @@ export function AddRoutine() {
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "2px solid var(--ink)", borderRadius: 13, padding: "10px 12px" }}>
               <IconDrag color="var(--muted-2)" />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800 }}>{h.name}</div>
+                <div style={{ fontSize: 14, fontWeight: 800 }}>
+                  {h.name}
+                  {h.existingHabitId && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--teal)", marginLeft: 6 }}>EXISTING</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
                   {TYPES.find((t) => t.value === h.type)?.label}
                   {h.type !== "TICK" && h.targetSec ? ` · ${Math.round(h.targetSec / 60)} min` : ""}
@@ -134,11 +142,11 @@ export function AddRoutine() {
             </div>
           ))}
 
-          {showHabitForm ? (
-            <InlineHabitForm onAdd={addHabit} onCancel={() => setShowHabitForm(false)} />
+          {showHabitPicker ? (
+            <HabitPicker alreadyAdded={habits} onAdd={addHabit} onCancel={() => setShowHabitPicker(false)} />
           ) : (
             <button
-              onClick={() => setShowHabitForm(true)}
+              onClick={() => setShowHabitPicker(true)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -158,6 +166,15 @@ export function AddRoutine() {
           )}
         </div>
 
+        <div className="field-label" style={{ marginTop: 22 }}>A quote to close with (optional)</div>
+        <textarea
+          className="text-input"
+          style={{ minHeight: 64, resize: "vertical" }}
+          placeholder="Shown at the end of every session"
+          value={quote}
+          onChange={(e) => setQuote(e.target.value)}
+        />
+
         {error && <div style={{ color: "var(--red)", fontSize: 13, fontWeight: 700, marginTop: 14 }}>{error}</div>}
       </div>
 
@@ -170,8 +187,86 @@ export function AddRoutine() {
   );
 }
 
-function InlineHabitForm({ onAdd, onCancel }) {
-  const [name, setName] = useState("");
+function HabitPicker({ alreadyAdded, onAdd, onCancel }) {
+  const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const { data } = useCachedData("habits", () => api.getHabits());
+  const addedIds = new Set(alreadyAdded.filter((h) => h.existingHabitId).map((h) => h.existingHabitId));
+
+  const results = useMemo(() => {
+    const all = data?.habits ?? [];
+    const q = query.trim().toLowerCase();
+    return all
+      .filter((h) => !addedIds.has(h.id))
+      .filter((h) => !q || h.name.toLowerCase().includes(q))
+      .slice(0, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, query]);
+
+  if (creating) {
+    return <InlineHabitForm onAdd={onAdd} onCancel={() => setCreating(false)} initialName={query} />;
+  }
+
+  return (
+    <div style={{ border: "2px solid var(--ink)", borderRadius: 13, padding: 12, background: "#fff", display: "flex", flexDirection: "column", gap: 10 }}>
+      <input
+        className="text-input"
+        placeholder="Search your habits..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        autoFocus
+      />
+
+      {results.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflowY: "auto" }}>
+          {results.map((h) => (
+            <button
+              key={h.id}
+              onClick={() =>
+                onAdd({
+                  existingHabitId: h.id,
+                  name: h.name,
+                  type: h.type,
+                  targetSec: null,
+                  xpValue: 10,
+                  required: true,
+                })
+              }
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                background: "var(--cream)",
+                border: "1.5px solid var(--border-soft)",
+                borderRadius: 10,
+                padding: "9px 11px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{h.name}</div>
+              <IconPlus width={14} height={14} strokeWidth={2.6} color="var(--muted)" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {query.trim() && results.length === 0 && (
+        <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600 }}>No matching habits.</div>
+      )}
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn secondary" style={{ padding: 10 }} onClick={onCancel}>Cancel</button>
+        <button className="btn teal" style={{ padding: 10 }} onClick={() => setCreating(true)}>
+          Create new{query.trim() ? ` "${query.trim()}"` : ""}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InlineHabitForm({ onAdd, onCancel, initialName = "" }) {
+  const [name, setName] = useState(initialName);
   const [type, setType] = useState("COUNTDOWN");
   const [minutes, setMinutes] = useState(5);
   const [required, setRequired] = useState(true);
@@ -226,7 +321,9 @@ function InlineHabitForm({ onAdd, onCancel }) {
 
       <div style={{ display: "flex", gap: 8 }}>
         <button className="btn secondary" style={{ padding: 10 }} onClick={onCancel}>Cancel</button>
-        <button className="btn" style={{ padding: 10 }} onClick={add}>Add</button>
+        <button className="btn" style={{ padding: 10 }} onClick={add}>
+          <IconCheck width={14} height={14} color="#fff" /> Add
+        </button>
       </div>
     </div>
   );

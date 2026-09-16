@@ -1,36 +1,27 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { api } from "../api.js";
+import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { IconFlame, IconCheck } from "../components/Icons.jsx";
 import { toDateKey } from "../lib/week.js";
 
 const TIERS = [1, 2, 3, 5, 10, 15, 20, 30, 31, 40, 50, 60, 75, 100, 150, 200, 365];
 const NAMES = [
-  "Spark", "Flicker", "Flame", "Blaze", "Bonfire", "Ember", "Inferno", "Wildfire",
+  "Spark", "Flicker", "Flame", "Flare", "Bonfire", "Ember", "Inferno", "Wildfire",
   "Phoenix", "Supernova", "Comet", "Nova", "Eclipse", "Aurora", "Zenith", "Legend", "Immortal",
 ];
 
 export function Progress() {
-  const [routines, setRoutines] = useState(null);
+  const { data: routinesData, error } = useCachedData("routines:all-today", () =>
+    api.getRoutines(toDateKey(new Date()))
+  );
+  const routines = routinesData?.routines;
   const [selectedId, setSelectedId] = useState(null);
-  const [detail, setDetail] = useState(null);
-  const [error, setError] = useState(null);
+  const activeId = selectedId ?? routines?.[0]?.id;
 
-  useEffect(() => {
-    api
-      .getRoutines(toDateKey(new Date()))
-      .then((res) => {
-        setRoutines(res.routines);
-        if (res.routines.length) setSelectedId(res.routines[0].id);
-      })
-      .catch((err) => setError(err.message));
-  }, []);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    setDetail(null);
-    api.getRoutine(selectedId).then(setDetail).catch((err) => setError(err.message));
-  }, [selectedId]);
+  const { data: detail } = useCachedData(activeId ? `routine:${activeId}` : null, () =>
+    api.getRoutine(activeId)
+  );
 
   if (error) return <div className="center-empty">Couldn't load progress: {error}</div>;
   if (!routines) return <div className="center-loading">Loading...</div>;

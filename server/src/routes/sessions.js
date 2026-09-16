@@ -116,6 +116,7 @@ sessionsRouter.post("/:sessionId/complete", async (req, res, next) => {
       xpEarned,
       doneCount: doneHabitIds.size,
       totalCount: session.routine.habits.length,
+      quote: session.routine.quote,
     });
   } catch (err) {
     next(err);

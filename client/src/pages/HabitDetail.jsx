@@ -1,19 +1,13 @@
-import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
+import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { IconBack } from "../components/Icons.jsx";
 
 export function HabitDetail() {
   const { habitId } = useParams();
   const navigate = useNavigate();
-  const [habit, setHabit] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    setHabit(null);
-    api.getHabit(habitId).then(setHabit).catch((err) => setError(err.message));
-  }, [habitId]);
+  const { data: habit, error } = useCachedData(`habit:${habitId}`, () => api.getHabit(habitId));
 
   if (error) return <div className="center-empty">Couldn't load habit: {error}</div>;
   if (!habit) return <div className="center-loading">Loading...</div>;

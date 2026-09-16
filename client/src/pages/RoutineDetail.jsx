@@ -1,0 +1,117 @@
+import { useNavigate, useParams } from "react-router-dom";
+import { api } from "../api.js";
+import { useCachedData } from "../lib/cache.js";
+import { toDateKey } from "../lib/week.js";
+import { BottomNav } from "../components/BottomNav.jsx";
+import { IconBack, IconFlame, IconPlay, IconTimer, IconCountUp, IconCheck } from "../components/Icons.jsx";
+
+const TYPE_ICON = { TICK: IconCheck, COUNTDOWN: IconTimer, COUNTUP: IconCountUp };
+
+export function RoutineDetail() {
+  const { routineId } = useParams();
+  const navigate = useNavigate();
+  const today = toDateKey(new Date());
+  const { data: routine, error } = useCachedData(`routine:${routineId}:${today}`, () =>
+    api.getRoutine(routineId, today)
+  );
+
+  if (error) return <div className="center-empty">Couldn't load that routine: {error}</div>;
+  if (!routine) return <div className="center-loading">Loading...</div>;
+
+  const doneCount = routine.habits.filter((h) => h.log?.completedAt).length;
+
+  return (
+    <div className="page">
+      <div className="top-bar" style={{ justifyContent: "space-between" }}>
+        <button className="icon-btn" onClick={() => navigate(-1)}>
+          <IconBack />
+        </button>
+        <div className="title-lg">{routine.name}</div>
+        <div style={{ width: 40 }} />
+      </div>
+
+      <div
+        className="card card-pop"
+        style={{
+          margin: "18px 20px 0",
+          background: routine.color,
+          borderRadius: 16,
+          padding: "16px 18px",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <IconFlame width={26} height={26} color="#FFB020" />
+        <div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, color: "#fff" }}>
+            {routine.currentStreak} day streak
+          </div>
+          <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
+            best ever: {routine.bestStreak} &middot; {doneCount}/{routine.habits.length} done today
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 22, padding: "0 20px 120px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="field-label">Habits</div>
+        {routine.habits.map((h) => {
+          const TypeIcon = TYPE_ICON[h.type];
+          const done = !!h.log?.completedAt;
+          const skipped = !!h.log?.skipped;
+          return (
+            <div
+              key={h.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                background: "#fff",
+                border: `2px solid ${done ? "var(--teal)" : "var(--ink)"}`,
+                borderRadius: 13,
+                padding: "12px 14px",
+                opacity: skipped ? 0.6 : 1,
+              }}
+            >
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  background: done ? "var(--teal)" : "#F0E4CE",
+                  border: "2px solid var(--ink)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <TypeIcon width={16} height={16} color={done ? "#fff" : "var(--muted)"} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 800 }}>{h.name}</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
+                  {!h.required && "optional · "}
+                  {h.type === "COUNTDOWN" && h.targetSec ? `${Math.round(h.targetSec / 60)} min` : h.type === "COUNTUP" ? "count up" : "tick"}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <IconFlame />
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700 }}>{h.currentStreak}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ position: "sticky", bottom: 76, padding: "0 20px 14px", marginTop: "auto" }}>
+        <button className="btn" style={{ background: routine.color }} onClick={() => navigate(`/routines/${routine.id}/session`)}>
+          <IconPlay color="#fff" width={18} height={18} />
+          {doneCount === routine.habits.length ? "Review routine" : "Start routine"}
+        </button>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}

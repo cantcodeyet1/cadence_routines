@@ -84,6 +84,7 @@ routinesRouter.get("/:id", async (req, res, next) => {
       currentStreak: routine.currentStreak,
       bestStreak: routine.bestStreak,
       weekdays: routine.days.map((d) => d.weekday),
+      quote: routine.quote,
       session: session
         ? { id: session.id, completedAt: session.completedAt, note: session.note }
         : null,
@@ -114,10 +115,10 @@ routinesRouter.get("/:id", async (req, res, next) => {
 });
 
 // POST /api/routines
-// body: { name, color, weekdays: number[], habits: [{ existingHabitId? , name, type, targetSec, xpValue, required }] }
+// body: { name, color, quote?, weekdays: number[], habits: [{ existingHabitId? , name, type, targetSec, xpValue, required }] }
 routinesRouter.post("/", async (req, res, next) => {
   try {
-    const { name, color, weekdays = [], habits = [] } = req.body;
+    const { name, color, quote, weekdays = [], habits = [] } = req.body;
     if (!name || !String(name).trim()) return res.status(400).json({ error: "name is required" });
 
     const routine = await prisma.$transaction(async (tx) => {
@@ -125,6 +126,7 @@ routinesRouter.post("/", async (req, res, next) => {
         data: {
           name: name.trim(),
           color: color || "#7C5CFC",
+          quote: quote?.trim() || null,
           days: { create: weekdays.map((weekday) => ({ weekday })) },
         },
       });

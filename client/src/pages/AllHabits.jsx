@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
+import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { IconFlame, IconChevronRight, IconPlus } from "../components/Icons.jsx";
 
 export function AllHabits() {
-  const [habits, setHabits] = useState(null);
-  const [error, setError] = useState(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    api.getHabits().then((res) => setHabits(res.habits)).catch((err) => setError(err.message));
-  }, []);
+  const { data, error } = useCachedData("habits", () => api.getHabits());
+  const habits = data?.habits;
 
   const groups = {};
   for (const h of habits ?? []) {

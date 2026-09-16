@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { currentWeek, toDateKey, weekdayName } from "../lib/week.js";
+import { useCachedData, prefetch } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { RoutineCard } from "../components/RoutineCard.jsx";
 import { IconPlus } from "../components/Icons.jsx";
@@ -9,21 +10,18 @@ import { IconPlus } from "../components/Icons.jsx";
 export function Home() {
   const todayKey = toDateKey(new Date());
   const [selected, setSelected] = useState(todayKey);
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
   const week = currentWeek();
 
+  const { data, error } = useCachedData(`routines:${selected}`, () => api.getRoutines(selected));
+
+  // Warm the cache for every other day in the week in the background, so
+  // switching days is instant instead of showing a spinner each time.
   useEffect(() => {
-    let cancelled = false;
-    setData(null);
-    api
-      .getRoutines(selected)
-      .then((res) => !cancelled && setData(res))
-      .catch((err) => !cancelled && setError(err.message));
-    return () => {
-      cancelled = true;
-    };
-  }, [selected]);
+    for (const d of week) {
+      if (d.key !== selected) prefetch(`routines:${d.key}`, () => api.getRoutines(d.key));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="page">

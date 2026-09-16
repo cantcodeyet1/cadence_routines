@@ -7,9 +7,17 @@ export function RoutineCard({ routine, isToday }) {
 
   return (
     <div style={{ position: "relative" }}>
-      <div
+      <button
+        onClick={() => navigate(`/routines/${routine.id}`)}
         className="card card-pop"
-        style={{ background: routine.color, borderRadius: 18, padding: "16px 18px" }}
+        style={{
+          background: routine.color,
+          borderRadius: 18,
+          padding: "16px 18px",
+          textAlign: "left",
+          width: "100%",
+          cursor: "pointer",
+        }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div
@@ -37,7 +45,7 @@ export function RoutineCard({ routine, isToday }) {
         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginTop: 4, fontWeight: 700 }}>
           {routine.doneCount} / {routine.habitCount} done &middot; +{routine.xpLeft} XP left
         </div>
-      </div>
+      </button>
 
       {isToday && (
         <button

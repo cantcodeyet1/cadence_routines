@@ -1,16 +1,13 @@
-import { useEffect, useState } from "react";
 import { api } from "../api.js";
+import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { IconPerson } from "../components/Icons.jsx";
 
 export function Profile() {
-  const [routines, setRoutines] = useState(null);
-  const [habits, setHabits] = useState(null);
-
-  useEffect(() => {
-    api.getAllRoutines().then((res) => setRoutines(res.routines));
-    api.getHabits().then((res) => setHabits(res.habits));
-  }, []);
+  const { data: routinesData } = useCachedData("routines:all", () => api.getAllRoutines());
+  const { data: habitsData } = useCachedData("habits", () => api.getHabits());
+  const routines = routinesData?.routines;
+  const habits = habitsData?.habits;
 
   const bestStreak = routines?.length ? Math.max(...routines.map((r) => r.bestStreak)) : 0;
 

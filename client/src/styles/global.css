@@ -4,6 +4,7 @@
 
 html, body, #root {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -21,24 +22,50 @@ a {
   color: var(--orange);
 }
 
+button {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
 /* The app renders as a phone-width column centered on the page, so it reads
-   sensibly on desktop too while staying true to the mobile-first design. */
+   sensibly on desktop too while staying true to the mobile-first design.
+   app-shell is pinned to the viewport height; .page is the scroll container
+   inside it, so content scrolls in place and the bottom nav (sticky, inside
+   .page) stays put instead of the whole document scrolling. */
 .app-shell {
   max-width: 430px;
-  min-height: 100vh;
+  height: 100vh;
   margin: 0 auto;
   background: var(--cream);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .page {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding-bottom: 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: page-enter 0.22s ease both;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page { animation: none; }
+  button { transition: none; }
 }
 
 .top-bar {
