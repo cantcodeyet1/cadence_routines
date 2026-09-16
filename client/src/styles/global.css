@@ -4,6 +4,7 @@
 
 html, body, #root {
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -40,7 +41,15 @@ button:active {
    .page) stays put instead of the whole document scrolling. */
 .app-shell {
   width: 100%;
+  /* 100vh on mobile browsers is measured as if the address bar were
+     always hidden, so the bottom of the shell (the nav bar) ends up
+     rendered underneath it - unreachable, since overflow is hidden and
+     there's nothing to scroll to reveal it. 100dvh tracks the actual
+     visible viewport as the browser chrome shows/hides; the 100vh line
+     stays first as a fallback for browsers that don't understand dvh
+     (they'll just ignore the second declaration). */
   height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
   background: var(--cream);
   display: flex;
