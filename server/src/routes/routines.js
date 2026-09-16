@@ -114,6 +114,43 @@ routinesRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+// GET /api/routines/:id/history?limit=14
+// Past sessions for this routine, most recent first, each with its
+// per-habit log times (for "when did I actually do this").
+routinesRouter.get("/:id/history", async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 14, 60);
+    const sessions = await prisma.routineSession.findMany({
+      where: { routineId: req.params.id, completedAt: { not: null } },
+      orderBy: { date: "desc" },
+      take: limit,
+      include: { logs: { include: { habit: true } } },
+    });
+
+    res.json({
+      sessions: sessions.map((s) => ({
+        id: s.id,
+        date: s.date.toISOString().slice(0, 10),
+        completedAt: s.completedAt,
+        note: s.note,
+        logs: s.logs
+          .sort((a, b) => (a.startedAt ?? a.completedAt) - (b.startedAt ?? b.completedAt))
+          .map((l) => ({
+            habitId: l.habitId,
+            habitName: l.habit.name,
+            startedAt: l.startedAt,
+            completedAt: l.completedAt,
+            durationSec: l.durationSec,
+            skipped: l.skipped,
+            note: l.note,
+          })),
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/routines
 // body: { name, color, quote?, weekdays: number[], habits: [{ existingHabitId? , name, type, targetSec, xpValue, required }] }
 routinesRouter.post("/", async (req, res, next) => {

@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum HabitType {
@@ -82,6 +83,7 @@ model HabitLog {
   session     RoutineSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   habitId     String
   habit       Habit          @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  startedAt   DateTime?
   completedAt DateTime?
   durationSec Int?
   note        String?

@@ -1,27 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { currentWeek, toDateKey, weekdayName } from "../lib/week.js";
-import { useCachedData, prefetch } from "../lib/cache.js";
+import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { RoutineCard } from "../components/RoutineCard.jsx";
 import { IconPlus } from "../components/Icons.jsx";
 
+// Days for the whole week are pre-warmed by warmCache() (see App.jsx / lib/warm.js).
 export function Home() {
   const todayKey = toDateKey(new Date());
   const [selected, setSelected] = useState(todayKey);
   const week = currentWeek();
 
   const { data, error } = useCachedData(`routines:${selected}`, () => api.getRoutines(selected));
-
-  // Warm the cache for every other day in the week in the background, so
-  // switching days is instant instead of showing a spinner each time.
-  useEffect(() => {
-    for (const d of week) {
-      if (d.key !== selected) prefetch(`routines:${d.key}`, () => api.getRoutines(d.key));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="page">

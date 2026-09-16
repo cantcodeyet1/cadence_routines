@@ -31,17 +31,19 @@ sessionsRouter.post("/start", async (req, res, next) => {
 sessionsRouter.post("/:sessionId/logs", async (req, res, next) => {
   try {
     const { sessionId } = req.params;
-    const { habitId, durationSec, note, skipped } = req.body;
+    const { habitId, durationSec, note, skipped, startedAt } = req.body;
     const completedAt = skipped ? null : req.body.completedAt ? new Date(req.body.completedAt) : new Date();
+    const startedAtDate = startedAt ? new Date(startedAt) : null;
 
     const session = await prisma.routineSession.findUniqueOrThrow({ where: { id: sessionId } });
 
     const log = await prisma.habitLog.upsert({
       where: { sessionId_habitId: { sessionId, habitId } },
-      update: { completedAt, durationSec: durationSec ?? null, note: note ?? null, skipped: !!skipped },
+      update: { startedAt: startedAtDate, completedAt, durationSec: durationSec ?? null, note: note ?? null, skipped: !!skipped },
       create: {
         sessionId,
         habitId,
+        startedAt: startedAtDate,
         completedAt,
         durationSec: durationSec ?? null,
         note: note ?? null,

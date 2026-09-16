@@ -21,6 +21,8 @@ export const api = {
     request("/api/routines", { method: "POST", body: JSON.stringify(data) }),
   addHabitToRoutine: (routineId, data) =>
     request(`/api/routines/${routineId}/habits`, { method: "POST", body: JSON.stringify(data) }),
+  getRoutineHistory: (routineId, limit) =>
+    request(`/api/routines/${routineId}/history${limit ? `?limit=${limit}` : ""}`),
 
   getHabits: () => request("/api/habits"),
   getHabit: (id) => request(`/api/habits/${id}`),

@@ -1,11 +1,27 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
 import { toDateKey } from "../lib/week.js";
 import { BottomNav } from "../components/BottomNav.jsx";
-import { IconBack, IconFlame, IconPlay, IconTimer, IconCountUp, IconCheck } from "../components/Icons.jsx";
+import { IconBack, IconFlame, IconPlay, IconTimer, IconCountUp, IconCheck, IconChevronRight } from "../components/Icons.jsx";
 
 const TYPE_ICON = { TICK: IconCheck, COUNTDOWN: IconTimer, COUNTUP: IconCountUp };
+
+function formatClock(iso) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDuration(sec) {
+  if (sec == null) return null;
+  if (sec < 60) return `${sec}s`;
+  const m = Math.round(sec / 60);
+  return `${m} min`;
+}
+
+function formatDate(dateKey) {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+}
 
 export function RoutineDetail() {
   const { routineId } = useParams();
@@ -13,6 +29,9 @@ export function RoutineDetail() {
   const today = toDateKey(new Date());
   const { data: routine, error } = useCachedData(`routine:${routineId}:${today}`, () =>
     api.getRoutine(routineId, today)
+  );
+  const { data: history } = useCachedData(`routine-history:${routineId}`, () =>
+    api.getRoutineHistory(routineId, 10)
   );
 
   if (error) return <div className="center-empty">Couldn't load that routine: {error}</div>;
@@ -53,7 +72,27 @@ export function RoutineDetail() {
         </div>
       </div>
 
-      <div style={{ marginTop: 22, padding: "0 20px 120px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <Link
+        to={`/routines/${routine.id}/milestones`}
+        style={{
+          margin: "10px 20px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: "#fff",
+          border: "2px solid var(--ink)",
+          borderRadius: 13,
+          padding: "11px 14px",
+          textDecoration: "none",
+          color: "var(--ink)",
+        }}
+      >
+        <IconFlame color="var(--orange)" />
+        <div style={{ flex: 1, fontSize: 14, fontWeight: 800 }}>View milestones</div>
+        <IconChevronRight color="var(--muted-2)" />
+      </Link>
+
+      <div style={{ marginTop: 22, padding: "0 20px", display: "flex", flexDirection: "column", gap: 8 }}>
         <div className="field-label">Habits</div>
         {routine.habits.map((h) => {
           const TypeIcon = TYPE_ICON[h.type];
@@ -104,7 +143,52 @@ export function RoutineDetail() {
         })}
       </div>
 
-      <div style={{ position: "sticky", bottom: 76, padding: "0 20px 14px", marginTop: "auto" }}>
+      <div style={{ marginTop: 22, padding: "0 20px" }}>
+        <div className="field-label">Recent sessions</div>
+        {!history && <div style={{ fontSize: 13, color: "var(--muted)" }}>Loading...</div>}
+        {history && history.sessions.length === 0 && (
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>No completed sessions yet.</div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {history?.sessions.map((s) => (
+            <div key={s.id} className="card" style={{ padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 8 }}>
+                {formatDate(s.date)}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {s.logs.map((l) => (
+                  <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: l.skipped ? "var(--red)" : "var(--teal)",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, fontWeight: 700, color: l.skipped ? "var(--muted)" : "var(--ink)" }}>
+                      {l.habitName}
+                    </div>
+                    {l.skipped ? (
+                      <div style={{ color: "var(--red)", fontWeight: 600 }}>skipped</div>
+                    ) : (
+                      <div style={{ color: "var(--muted)", fontWeight: 600 }}>
+                        {l.startedAt && l.completedAt
+                          ? `${formatClock(l.startedAt)} – ${formatClock(l.completedAt)}`
+                          : formatClock(l.completedAt)}
+                        {formatDuration(l.durationSec) ? ` · ${formatDuration(l.durationSec)}` : ""}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginTop: "auto", padding: "22px 20px 14px" }}>
         <button className="btn" style={{ background: routine.color }} onClick={() => navigate(`/routines/${routine.id}/session`)}>
           <IconPlay color="#fff" width={18} height={18} />
           {doneCount === routine.habits.length ? "Review routine" : "Start routine"}

@@ -1,10 +1,9 @@
 import { NavLink } from "react-router-dom";
-import { IconHome, IconGrid, IconBars, IconPerson } from "./Icons.jsx";
+import { IconHome, IconGrid, IconPerson } from "./Icons.jsx";
 
 const items = [
   { to: "/", label: "Home", Icon: IconHome, end: true },
   { to: "/habits", label: "Habits", Icon: IconGrid },
-  { to: "/progress", label: "Progress", Icon: IconBars },
   { to: "/profile", label: "Profile", Icon: IconPerson },
 ];
 

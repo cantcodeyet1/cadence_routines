@@ -27,6 +27,7 @@ export function Session() {
   const [summary, setSummary] = useState(null);
   const [routineNote, setRoutineNote] = useState("");
   const tickRef = useRef(null);
+  const habitStartRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +60,7 @@ export function Session() {
     if (!current) return;
     setSeconds(current.type === "COUNTDOWN" ? current.targetSec ?? 0 : 0);
     setRunning(true);
+    habitStartRef.current = new Date();
   }, [current?.id]);
 
   useEffect(() => {
@@ -81,10 +83,15 @@ export function Session() {
 
   async function saveNoteAndAdvance() {
     const habit = noteHabit;
+    // `seconds` is frozen at whatever it was when Complete was tapped (the
+    // ticking effect stops as soon as noteHabit is set) - normalize it to
+    // true elapsed time regardless of whether this habit counts up or down.
+    const elapsed = habit.type === "COUNTDOWN" ? (habit.targetSec ?? 0) - seconds : seconds;
     await api.logHabit(sessionId, {
       habitId: habit.id,
+      startedAt: habitStartRef.current?.toISOString(),
       completedAt: new Date().toISOString(),
-      durationSec: habit.type === "TICK" ? null : seconds,
+      durationSec: habit.type === "TICK" ? null : elapsed,
       note: noteText.trim() || null,
     });
     setLogs((prev) => ({ ...prev, [habit.id]: { completedAt: new Date().toISOString(), note: noteText } }));

@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
+import { highestEarnedTier } from "../lib/milestones.js";
 import { BottomNav } from "../components/BottomNav.jsx";
-import { IconPerson } from "../components/Icons.jsx";
+import { IconPerson, IconFlame } from "../components/Icons.jsx";
 
 export function Profile() {
   const { data: routinesData } = useCachedData("routines:all", () => api.getAllRoutines());
@@ -56,6 +58,55 @@ export function Profile() {
       </div>
 
       <div style={{ marginTop: 30, padding: "0 20px" }}>
+        <div className="field-label">Badges</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {(routines ?? []).map((r) => {
+            const tier = highestEarnedTier(r.bestStreak);
+            return (
+              <Link
+                key={r.id}
+                to={`/routines/${r.id}/milestones`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  background: "#fff",
+                  border: "2px solid var(--ink)",
+                  borderRadius: 13,
+                  padding: "10px 14px",
+                  textDecoration: "none",
+                  color: "var(--ink)",
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: "50%",
+                    background: tier ? "var(--teal)" : "#F0E4CE",
+                    border: `2px solid ${tier ? "var(--ink)" : "var(--border-soft-2)"}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconFlame color={tier ? "#fff" : "var(--muted-2)"} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800 }}>{tier ? tier.name : "Not started"}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>{r.name}</div>
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>
+                  best {r.bestStreak}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 22, padding: "0 20px 30px" }}>
         <div className="field-label">Your routines</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {(routines ?? []).map((r) => (

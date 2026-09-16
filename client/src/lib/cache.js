@@ -31,6 +31,14 @@ export function prefetch(key, fetcher) {
   }
 }
 
+// Like prefetch, but resolves with the data - lets a warm-up routine chain
+// off of a value (e.g. fetch each routine's detail once the routine list
+// is in) without a component mounting to read it via useCachedData.
+export function prefetchAndGet(key, fetcher) {
+  if (store.has(key)) return Promise.resolve(store.get(key));
+  return load(key, fetcher);
+}
+
 // Returns { data, error, loading, refresh }. `data` is served from cache
 // immediately (if present) while a fresh fetch runs quietly behind it, so
 // only a genuinely first-ever visit shows a loading state.
