@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { IconClose, IconCheck, IconTimer, IconCountUp } from "../components/Icons.jsx";
 
@@ -13,13 +13,30 @@ const COLORS = ["#7C5CFC", "#06B6A4", "#FF6B35", "#FFB020", "#4C6EF5"];
 
 export function AddHabit() {
   const navigate = useNavigate();
+  const { habitId } = useParams();
+  const isEdit = !!habitId;
+
   const [name, setName] = useState("");
   const [type, setType] = useState("COUNTDOWN");
   const [minutes, setMinutes] = useState(5);
   const [colorTag, setColorTag] = useState(COLORS[0]);
-  const [required, setRequired] = useState(true);
+  const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!isEdit) return;
+    api
+      .getHabit(habitId)
+      .then((h) => {
+        setName(h.name);
+        setType(h.type);
+        if (h.targetSec) setMinutes(Math.max(1, Math.round(h.targetSec / 60)));
+        setColorTag(h.colorTag);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [habitId, isEdit]);
 
   async function submit() {
     if (!name.trim()) {
@@ -28,14 +45,20 @@ export function AddHabit() {
     }
     setSaving(true);
     setError(null);
+    const payload = {
+      name: name.trim(),
+      type,
+      targetSec: type === "COUNTDOWN" ? minutes * 60 : null,
+      colorTag,
+    };
     try {
-      await api.createHabit({
-        name: name.trim(),
-        type,
-        targetSec: type === "TICK" ? null : minutes * 60,
-        colorTag,
-      });
-      navigate("/habits");
+      if (isEdit) {
+        await api.updateHabit(habitId, payload);
+        navigate(`/habits/${habitId}`);
+      } else {
+        await api.createHabit(payload);
+        navigate("/habits");
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -43,13 +66,15 @@ export function AddHabit() {
     }
   }
 
+  if (loading) return <div className="center-loading">Loading...</div>;
+
   return (
     <div className="page">
       <div className="top-bar" style={{ justifyContent: "space-between" }}>
         <button className="icon-btn" onClick={() => navigate(-1)}>
           <IconClose />
         </button>
-        <div className="title-lg">New Habit</div>
+        <div className="title-lg">{isEdit ? "Edit Habit" : "New Habit"}</div>
         <div style={{ width: 40 }} />
       </div>
 
@@ -83,7 +108,7 @@ export function AddHabit() {
           })}
         </div>
 
-        {type !== "TICK" && (
+        {type === "COUNTDOWN" && (
           <>
             <div className="field-label" style={{ marginTop: 22 }}>Duration</div>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -114,22 +139,12 @@ export function AddHabit() {
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 24, background: "#fff", border: "2px solid var(--border-soft)", borderRadius: 14, padding: "13px 15px" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 800 }}>Required for streak</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Missing it breaks the routine's streak</div>
-          </div>
-          <div className={`switch${required ? " on" : ""}`} onClick={() => setRequired((r) => !r)}>
-            <div className="knob" />
-          </div>
-        </div>
-
         {error && <div style={{ color: "var(--red)", fontSize: 13, fontWeight: 700, marginTop: 14 }}>{error}</div>}
       </div>
 
       <div style={{ padding: "16px 20px 26px" }}>
         <button className="btn" onClick={submit} disabled={saving}>
-          {saving ? "Adding..." : "Add habit"}
+          {saving ? "Saving..." : isEdit ? "Save changes" : "Add habit"}
         </button>
       </div>
     </div>

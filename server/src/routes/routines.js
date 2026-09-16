@@ -244,3 +244,20 @@ routinesRouter.post("/:id/habits", async (req, res, next) => {
     next(err);
   }
 });
+
+// DELETE /api/routines/:id/habits/:routineHabitId
+// Removes a habit from this routine (just the link - the habit itself,
+// and its history, are untouched).
+routinesRouter.delete("/:id/habits/:routineHabitId", async (req, res, next) => {
+  try {
+    const link = await prisma.routineHabit.findFirst({
+      where: { id: req.params.routineHabitId, routineId: req.params.id },
+    });
+    if (!link) return res.status(404).json({ error: "Not found in this routine" });
+
+    await prisma.routineHabit.delete({ where: { id: link.id } });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});

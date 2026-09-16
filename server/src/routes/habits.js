@@ -122,3 +122,27 @@ habitsRouter.post("/", async (req, res, next) => {
     next(err);
   }
 });
+
+// PATCH /api/habits/:id  -- edit a habit's own properties (name, type,
+// duration, color). Not routine-specific - "required" lives on RoutineHabit.
+habitsRouter.patch("/:id", async (req, res, next) => {
+  try {
+    const { name, type, targetSec, xpValue, colorTag } = req.body;
+    if (name != null && !String(name).trim()) return res.status(400).json({ error: "name cannot be blank" });
+
+    const habit = await prisma.habit.update({
+      where: { id: req.params.id },
+      data: {
+        ...(name != null && { name: name.trim() }),
+        ...(type != null && { type }),
+        ...(targetSec !== undefined && { targetSec }),
+        ...(xpValue != null && { xpValue }),
+        ...(colorTag != null && { colorTag }),
+      },
+    });
+
+    res.json(habit);
+  } catch (err) {
+    next(err);
+  }
+});

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
 import { BottomNav } from "../components/BottomNav.jsx";
-import { IconBack } from "../components/Icons.jsx";
+import { IconBack, IconEdit } from "../components/Icons.jsx";
 
 export function HabitDetail() {
   const { habitId } = useParams();
@@ -13,21 +13,25 @@ export function HabitDetail() {
   if (!habit) return <div className="center-loading">Loading...</div>;
 
   // 84 days as 12 columns x 7 rows
+  const heatmap = habit.heatmap ?? [];
   const columns = [];
-  for (let c = 0; c < 12; c++) columns.push(habit.heatmap.slice(c * 7, c * 7 + 7));
+  for (let c = 0; c < 12; c++) columns.push(heatmap.slice(c * 7, c * 7 + 7));
 
   return (
     <div className="page">
-      <div className="top-bar">
+      <div className="top-bar" style={{ justifyContent: "space-between" }}>
         <button className="icon-btn" onClick={() => navigate(-1)}>
           <IconBack />
         </button>
-        <div>
+        <div style={{ textAlign: "center" }}>
           <div className="title-lg">{habit.name}</div>
           <div className="subtitle" style={{ marginTop: 2 }}>
-            part of {habit.routines.map((r) => r.name).join(", ") || "no routine"}
+            part of {(habit.routines ?? []).map((r) => r.name).join(", ") || "no routine"}
           </div>
         </div>
+        <button className="icon-btn" onClick={() => navigate(`/habits/${habitId}/edit`)}>
+          <IconEdit />
+        </button>
       </div>
 
       <div style={{ display: "flex", gap: 10, padding: "16px 20px 0" }}>
@@ -64,11 +68,11 @@ export function HabitDetail() {
 
       <div style={{ marginTop: 22, padding: "0 20px 30px" }}>
         <div className="field-label">Recent notes</div>
-        {habit.recentNotes.length === 0 && (
+        {(habit.recentNotes ?? []).length === 0 && (
           <div style={{ fontSize: 13, color: "var(--muted)" }}>No notes yet.</div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {habit.recentNotes.map((n, i) => (
+          {(habit.recentNotes ?? []).map((n, i) => (
             <div key={i} className="card">
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)" }}>{n.date}</div>
               <div style={{ fontSize: 13.5, marginTop: 2 }}>{n.note}</div>

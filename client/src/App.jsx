@@ -14,7 +14,9 @@ import { AddHabit } from "./pages/AddHabit.jsx";
 
 export default function App() {
   useEffect(() => {
-    warmCache();
+    // Best-effort background warm-up - a transient network hiccup here
+    // shouldn't surface as an unhandled rejection.
+    warmCache().catch(() => {});
   }, []);
 
   return (
@@ -29,6 +31,7 @@ export default function App() {
         <Route path="/habits" element={<AllHabits />} />
         <Route path="/habits/new" element={<AddHabit />} />
         <Route path="/habits/:habitId" element={<HabitDetail />} />
+        <Route path="/habits/:habitId/edit" element={<AddHabit />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
     </div>

@@ -1,9 +1,21 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
 import { toDateKey } from "../lib/week.js";
 import { BottomNav } from "../components/BottomNav.jsx";
-import { IconBack, IconFlame, IconPlay, IconTimer, IconCountUp, IconCheck, IconChevronRight } from "../components/Icons.jsx";
+import { HabitPicker } from "../components/HabitPicker.jsx";
+import {
+  IconBack,
+  IconFlame,
+  IconPlay,
+  IconTimer,
+  IconCountUp,
+  IconCheck,
+  IconChevronRight,
+  IconPlus,
+  IconTrash,
+} from "../components/Icons.jsx";
 
 const TYPE_ICON = { TICK: IconCheck, COUNTDOWN: IconTimer, COUNTUP: IconCountUp };
 
@@ -27,7 +39,8 @@ export function RoutineDetail() {
   const { routineId } = useParams();
   const navigate = useNavigate();
   const today = toDateKey(new Date());
-  const { data: routine, error } = useCachedData(`routine:${routineId}:${today}`, () =>
+  const [showHabitPicker, setShowHabitPicker] = useState(false);
+  const { data: routine, error, refresh } = useCachedData(`routine:${routineId}:${today}`, () =>
     api.getRoutine(routineId, today)
   );
   const { data: history } = useCachedData(`routine-history:${routineId}`, () =>
@@ -38,6 +51,17 @@ export function RoutineDetail() {
   if (!routine) return <div className="center-loading">Loading...</div>;
 
   const doneCount = routine.habits.filter((h) => h.log?.completedAt).length;
+
+  async function addHabit(habit) {
+    await api.addHabitToRoutine(routineId, habit);
+    setShowHabitPicker(false);
+    refresh();
+  }
+
+  async function removeHabit(routineHabitId) {
+    await api.removeHabitFromRoutine(routineId, routineHabitId);
+    refresh();
+  }
 
   return (
     <div className="page">
@@ -118,20 +142,57 @@ export function RoutineDetail() {
               >
                 <TypeIcon width={16} height={16} color={done ? "#fff" : "var(--muted)"} />
               </div>
-              <div style={{ flex: 1 }}>
+              <button
+                onClick={() => navigate(`/habits/${h.id}`)}
+                style={{ flex: 1, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer" }}
+              >
                 <div style={{ fontSize: 14.5, fontWeight: 800 }}>{h.name}</div>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>
                   {!h.required && "optional · "}
                   {h.type === "COUNTDOWN" && h.targetSec ? `${Math.round(h.targetSec / 60)} min` : h.type === "COUNTUP" ? "count up" : "tick"}
                 </div>
-              </div>
+              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <IconFlame />
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700 }}>{h.currentStreak}</div>
               </div>
+              <button
+                onClick={() => removeHabit(h.routineHabitId)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-2)" }}
+                aria-label={`Remove ${h.name} from this routine`}
+              >
+                <IconTrash width={15} height={15} />
+              </button>
             </div>
           );
         })}
+
+        {showHabitPicker ? (
+          <HabitPicker
+            alreadyAdded={routine.habits.map((h) => ({ existingHabitId: h.id }))}
+            onAdd={addHabit}
+            onCancel={() => setShowHabitPicker(false)}
+          />
+        ) : (
+          <button
+            onClick={() => setShowHabitPicker(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              border: "2px dashed var(--border-soft-2)",
+              borderRadius: 13,
+              padding: 12,
+              color: "var(--muted)",
+              background: "none",
+              cursor: "pointer",
+            }}
+          >
+            <IconPlus width={16} height={16} strokeWidth={2.6} />
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 13.5, fontWeight: 600 }}>Add habit</span>
+          </button>
+        )}
       </div>
 
       <div style={{ marginTop: 22, padding: "0 20px" }}>
@@ -140,49 +201,9 @@ export function RoutineDetail() {
         {history && history.sessions.length === 0 && (
           <div style={{ fontSize: 13, color: "var(--muted)" }}>No completed sessions yet.</div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {history?.sessions.map((s) => (
-            <div key={s.id} className="card" style={{ padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{formatDate(s.date)}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>
-                  {s.startedAt && s.completedAt
-                    ? `${formatClock(s.startedAt)} – ${formatClock(s.completedAt)}`
-                    : formatClock(s.completedAt)}
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {s.logs.map((l) => (
-                  <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-                    <div style={{ width: 13, fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
-                      {l.position}
-                    </div>
-                    <div
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: l.skipped ? "var(--red)" : "var(--teal)",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ flex: 1, fontWeight: 700, color: l.skipped ? "var(--muted)" : "var(--ink)" }}>
-                      {l.habitName}
-                    </div>
-                    {l.skipped ? (
-                      <div style={{ color: "var(--red)", fontWeight: 600 }}>skipped</div>
-                    ) : (
-                      <div style={{ color: "var(--muted)", fontWeight: 600 }}>
-                        {l.startedAt && l.completedAt
-                          ? `${formatClock(l.startedAt)} – ${formatClock(l.completedAt)}`
-                          : formatClock(l.completedAt)}
-                        {formatDuration(l.durationSec) ? ` · ${formatDuration(l.durationSec)}` : ""}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SessionCard key={s.id} session={s} />
           ))}
         </div>
       </div>
@@ -195,6 +216,67 @@ export function RoutineDetail() {
       </div>
 
       <BottomNav />
+    </div>
+  );
+}
+
+function SessionCard({ session: s }) {
+  const [open, setOpen] = useState(false);
+  const doneCount = s.logs.filter((l) => !l.skipped).length;
+
+  return (
+    <div className="card" style={{ padding: "12px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, flexShrink: 0 }}>{formatDate(s.date)}</div>
+        <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>
+          {s.startedAt && s.completedAt
+            ? `${formatClock(s.startedAt)} – ${formatClock(s.completedAt)}`
+            : formatClock(s.completedAt)}
+        </div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: doneCount === s.logs.length ? "var(--teal)" : "var(--muted)" }}>
+          {doneCount}/{s.logs.length}
+        </div>
+        <IconChevronRight
+          width={13}
+          height={13}
+          color="var(--muted-2)"
+          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }}
+        />
+      </div>
+
+      {open && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-soft)" }}>
+          {s.logs.map((l) => (
+            <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+              <div style={{ width: 13, fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
+                {l.position}
+              </div>
+              <div
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: l.skipped ? "var(--red)" : "var(--teal)",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, fontWeight: 700, color: l.skipped ? "var(--muted)" : "var(--ink)" }}>
+                {l.habitName}
+              </div>
+              {l.skipped ? (
+                <div style={{ color: "var(--red)", fontWeight: 600 }}>skipped</div>
+              ) : (
+                <div style={{ color: "var(--muted)", fontWeight: 600 }}>
+                  {l.startedAt && l.completedAt
+                    ? `${formatClock(l.startedAt)} – ${formatClock(l.completedAt)}`
+                    : formatClock(l.completedAt)}
+                  {formatDuration(l.durationSec) ? ` · ${formatDuration(l.durationSec)}` : ""}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
