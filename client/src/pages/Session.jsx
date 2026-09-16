@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
+import { invalidate } from "../lib/cache.js";
 import { toDateKey } from "../lib/week.js";
+import { TIERS, NAMES } from "../lib/milestones.js";
 import { TimerRing } from "../components/TimerRing.jsx";
 import { IconBack, IconCheck, IconSkip, IconPause, IconFlame, IconQuote } from "../components/Icons.jsx";
 
@@ -25,6 +27,7 @@ export function Session() {
   const [noteHabit, setNoteHabit] = useState(null); // habit object when the note sheet is open
   const [noteText, setNoteText] = useState("");
   const [summary, setSummary] = useState(null);
+  const [celebrated, setCelebrated] = useState(false);
   const [routineNote, setRoutineNote] = useState("");
   const tickRef = useRef(null);
   const habitStartRef = useRef(null);
@@ -121,6 +124,15 @@ export function Session() {
   async function finishRoutine() {
     const result = await api.completeSession(sessionId, routineNote.trim() || null);
     setSummary(result);
+    // The routine and every habit it contains just changed streak/XP state -
+    // drop the other pages' cached copies so Home, Habits and Milestones
+    // pick up the new numbers on next visit instead of showing stale ones.
+    invalidate([
+      `routines:${toDateKey(new Date())}`,
+      "routines:all",
+      "habits",
+      ...routine.habits.map((h) => `habit:${h.id}`),
+    ]);
   }
 
   if (!routine) {
@@ -141,6 +153,21 @@ export function Session() {
   }
 
   if (summary) {
+    const crossedIndex =
+      summary.bestStreak > routine.bestStreak
+        ? TIERS.findIndex((t) => t > routine.bestStreak && t <= summary.bestStreak)
+        : -1;
+    if (crossedIndex !== -1 && !celebrated) {
+      return (
+        <MilestoneReached
+          routine={routine}
+          tier={TIERS[crossedIndex]}
+          name={NAMES[crossedIndex]}
+          nextTier={TIERS[crossedIndex + 1] ?? null}
+          onContinue={() => setCelebrated(true)}
+        />
+      );
+    }
     return <RoutineSummary routine={routine} summary={summary} onClose={() => navigate("/")} />;
   }
 
@@ -401,12 +428,12 @@ function RoutineWrapUp({ routine, logs, note, setNote, onDone }) {
 
 function RoutineSummary({ routine, summary, onClose }) {
   return (
-    <div className="page">
-      <div style={{ textAlign: "center", padding: "40px 20px 0", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>
+    <div className="page" style={{ background: routine.color }}>
+      <div style={{ textAlign: "center", padding: "40px 20px 0", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.75)", textTransform: "uppercase" }}>
         Nice work
       </div>
       <div style={{ textAlign: "center", marginTop: 14 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600 }}>{routine.name}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "#fff" }}>{routine.name}</div>
       </div>
 
       <div style={{ display: "flex", gap: 10, padding: "22px 20px 0" }}>
@@ -456,7 +483,90 @@ function RoutineSummary({ routine, summary, onClose }) {
       )}
 
       <div style={{ marginTop: "auto", padding: "16px 20px 26px" }}>
-        <button className="btn purple" onClick={onClose}>Back to home</button>
+        <button className="btn secondary" onClick={onClose}>Back to home</button>
+      </div>
+    </div>
+  );
+}
+
+const CONFETTI = [
+  { top: "8%", left: "14%", size: 10, color: "#FFB020", rotate: 12 },
+  { top: "14%", left: "78%", size: 8, color: "#06B6A4", rotate: -18 },
+  { top: "22%", left: "30%", size: 7, color: "#fff", rotate: 30 },
+  { top: "10%", left: "55%", size: 9, color: "#FF6B35", rotate: -8 },
+  { top: "28%", left: "85%", size: 6, color: "#fff", rotate: 20 },
+  { top: "20%", left: "8%", size: 6, color: "#4C6EF5", rotate: -25 },
+];
+
+function MilestoneReached({ routine, tier, name, nextTier, onContinue }) {
+  return (
+    <div className="page" style={{ background: routine.color, position: "relative", overflow: "hidden" }}>
+      {CONFETTI.map((c, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            top: c.top,
+            left: c.left,
+            width: c.size,
+            height: c.size,
+            background: c.color,
+            borderRadius: 3,
+            transform: `rotate(${c.rotate}deg)`,
+            opacity: 0.9,
+          }}
+        />
+      ))}
+
+      <div style={{ textAlign: "center", padding: "56px 20px 0", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: 1 }}>
+        Milestone reached
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 22 }}>
+        <div
+          style={{
+            width: 118,
+            height: 118,
+            borderRadius: "50%",
+            background: "var(--amber)",
+            border: "3px solid var(--ink)",
+            boxShadow: "6px 6px 0 rgba(0,0,0,0.25)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, color: "var(--ink)" }}>{tier}</div>
+        </div>
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 22, padding: "0 30px" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, color: "#fff" }}>You're on fire!</div>
+        <div style={{ fontSize: 14.5, color: "rgba(255,255,255,0.9)", fontWeight: 600, marginTop: 10, lineHeight: 1.5 }}>
+          {tier} days of {routine.name}, back to back. That's the <strong>{name}</strong> badge &mdash; earned.
+        </div>
+      </div>
+
+      {nextTier && (
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 22 }}>
+          <div
+            style={{
+              background: "rgba(255,255,255,0.16)",
+              border: "2px solid rgba(255,255,255,0.4)",
+              borderRadius: 12,
+              padding: "9px 16px",
+              fontSize: 12.5,
+              fontWeight: 700,
+              color: "#fff",
+            }}
+          >
+            Next up: Day {nextTier} &middot; only {nextTier - tier} to go
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: "auto", padding: "16px 20px 26px" }}>
+        <button className="btn secondary" onClick={onContinue}>Keep going</button>
       </div>
     </div>
   );

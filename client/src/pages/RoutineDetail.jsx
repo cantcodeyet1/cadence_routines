@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { useCachedData } from "../lib/cache.js";
+import { invalidate, useCachedData } from "../lib/cache.js";
 import { toDateKey } from "../lib/week.js";
 import { BottomNav } from "../components/BottomNav.jsx";
 import { HabitPicker } from "../components/HabitPicker.jsx";
@@ -80,9 +80,18 @@ export function RoutineDetail() {
     }
   }
 
-  async function deleteSession(sessionId) {
-    await api.deleteSession(sessionId);
+  async function deleteSession(session) {
+    await api.deleteSession(session.id);
     await Promise.all([refreshHistory(), refresh()]);
+    // The deleted session's habits, plus every routine/habit-list view that
+    // shows this routine's streak or that day's ticks, are all stale now -
+    // drop them so the next visit refetches instead of showing old numbers.
+    invalidate([
+      `routines:${session.date}`,
+      "routines:all",
+      "habits",
+      ...routine.habits.map((h) => `habit:${h.id}`),
+    ]);
   }
 
   return (
@@ -313,7 +322,7 @@ function SessionCard({ session: s, onDelete }) {
   return (
     <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
       <button
-        onClick={() => onDelete(s.id)}
+        onClick={() => onDelete(s)}
         aria-label="Delete session"
         style={{
           position: "absolute",

@@ -73,3 +73,13 @@ export function useCachedData(key, fetcher) {
 export function setCached(key, data) {
   store.set(key, data);
 }
+
+// Drops one or more keys from the cache without a mounted component to
+// call refresh() through - used when an action on one page (deleting a
+// session, finishing a routine) changes data another, currently-unmounted
+// page has cached. That page just refetches fresh the next time it mounts,
+// instead of showing what's now stale.
+export function invalidate(keyOrKeys) {
+  const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+  for (const key of keys) store.delete(key);
+}

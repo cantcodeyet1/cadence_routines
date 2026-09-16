@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { toDateOnly, todayDateOnly } from "../lib/dates.js";
-import { computeNextHabitStreak, computeNextRoutineStreak } from "../lib/streaks.js";
+import {
+  computeNextHabitStreak,
+  computeNextRoutineStreak,
+  recomputeHabitStreak,
+  recomputeRoutineStreak,
+} from "../lib/streaks.js";
 
 export const sessionsRouter = Router();
 
@@ -41,11 +46,24 @@ sessionsRouter.post("/start", async (req, res, next) => {
 
 // DELETE /api/sessions/:sessionId
 // Removes a session and its logs (e.g. clearing out a stray or duplicate
-// run). Doesn't retroactively recompute streaks - those only move forward
-// as sessions complete, never backward on delete.
+// run), then rebuilds the routine's streak - and the streak of every habit
+// that had a log in it - from what's left of the history. A removed day can
+// shorten or break a streak that only ever moved forward while sessions were
+// being completed.
 sessionsRouter.delete("/:sessionId", async (req, res, next) => {
   try {
-    await prisma.routineSession.delete({ where: { id: req.params.sessionId } });
+    const session = await prisma.routineSession.findUnique({
+      where: { id: req.params.sessionId },
+      include: { logs: true },
+    });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    await prisma.routineSession.delete({ where: { id: session.id } });
+
+    const habitIds = [...new Set(session.logs.map((l) => l.habitId))];
+    await recomputeRoutineStreak(session.routineId);
+    await Promise.all(habitIds.map((id) => recomputeHabitStreak(id)));
+
     res.status(204).end();
   } catch (err) {
     next(err);

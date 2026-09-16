@@ -5,7 +5,7 @@
 export const TIERS = [1, 2, 3, 5, 10, 15, 20, 30, 31, 40, 50, 60, 75, 100, 150, 200, 365];
 
 export const NAMES = [
-  "Spark", "Ember", "Flicker", "Flame", "Blaze", "Bonfire", "Inferno", "Wildfire",
+  "Spark", "Flicker", "Flame", "Blaze", "Bonfire", "Ember", "Inferno", "Wildfire",
   "Firestorm", "Supernova", "Comet", "Nova", "Eclipse", "Aurora", "Zenith", "Legend", "Immortal",
 ];
 
