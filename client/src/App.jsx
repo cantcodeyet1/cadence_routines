@@ -26,6 +26,7 @@ export default function App() {
         <Route path="/routines" element={<AllRoutines />} />
         <Route path="/routines/new" element={<AddRoutine />} />
         <Route path="/routines/:routineId" element={<RoutineDetail />} />
+        <Route path="/routines/:routineId/edit" element={<AddRoutine />} />
         <Route path="/routines/:routineId/session" element={<Session />} />
         <Route path="/routines/:routineId/milestones" element={<RoutineMilestones />} />
         <Route path="/habits" element={<AllHabits />} />

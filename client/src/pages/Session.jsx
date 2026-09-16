@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { toDateKey } from "../lib/week.js";
 import { TimerRing } from "../components/TimerRing.jsx";
-import { IconBack, IconCheck, IconSkip, IconPause, IconFlame } from "../components/Icons.jsx";
+import { IconBack, IconCheck, IconSkip, IconPause, IconFlame, IconQuote } from "../components/Icons.jsx";
 
 function formatTime(totalSec) {
   const s = Math.max(0, Math.round(totalSec));
@@ -438,10 +438,20 @@ function RoutineSummary({ routine, summary, onClose }) {
       )}
 
       {summary.quote && (
-        <div style={{ margin: "22px 20px 0", textAlign: "center", padding: "0 12px" }}>
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 15.5, fontStyle: "italic", color: "var(--ink)", lineHeight: 1.5 }}>
-            &ldquo;{summary.quote}&rdquo;
-          </div>
+        <div
+          style={{
+            margin: "22px 20px 0",
+            background: "#fff",
+            border: "2.5px solid var(--ink)",
+            borderRadius: 16,
+            padding: "16px 18px",
+            display: "flex",
+            gap: 12,
+            boxShadow: "3px 3px 0 var(--ink)",
+          }}
+        >
+          <IconQuote color={routine.color} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14.5, fontStyle: "italic", fontWeight: 600, lineHeight: 1.5 }}>{summary.quote}</div>
         </div>
       )}
 

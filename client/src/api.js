@@ -19,10 +19,13 @@ export const api = {
   getRoutine: (id, date) => request(`/api/routines/${id}${date ? `?date=${date}` : ""}`),
   createRoutine: (data) =>
     request("/api/routines", { method: "POST", body: JSON.stringify(data) }),
+  updateRoutine: (id, data) => request(`/api/routines/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   addHabitToRoutine: (routineId, data) =>
     request(`/api/routines/${routineId}/habits`, { method: "POST", body: JSON.stringify(data) }),
   removeHabitFromRoutine: (routineId, routineHabitId) =>
     request(`/api/routines/${routineId}/habits/${routineHabitId}`, { method: "DELETE" }),
+  reorderRoutineHabits: (routineId, order) =>
+    request(`/api/routines/${routineId}/habits/reorder`, { method: "PATCH", body: JSON.stringify({ order }) }),
   getRoutineHistory: (routineId, limit) =>
     request(`/api/routines/${routineId}/history${limit ? `?limit=${limit}` : ""}`),
 

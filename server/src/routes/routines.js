@@ -116,6 +116,72 @@ routinesRouter.get("/:id", async (req, res, next) => {
   }
 });
 
+// PATCH /api/routines/:id  -- edit the routine's own fields (habits are
+// managed separately via the /habits sub-routes below)
+// body: { name?, color?, quote?, weekdays? }
+routinesRouter.patch("/:id", async (req, res, next) => {
+  try {
+    const { name, color, quote, weekdays } = req.body;
+    if (name != null && !String(name).trim()) return res.status(400).json({ error: "name cannot be blank" });
+    if (weekdays != null && weekdays.length === 0) return res.status(400).json({ error: "pick at least one day" });
+
+    const routine = await prisma.$transaction(async (tx) => {
+      const updated = await tx.routine.update({
+        where: { id: req.params.id },
+        data: {
+          ...(name != null && { name: name.trim() }),
+          ...(color != null && { color }),
+          ...(quote !== undefined && { quote: quote?.trim() || null }),
+        },
+      });
+
+      if (weekdays != null) {
+        await tx.routineDay.deleteMany({ where: { routineId: req.params.id } });
+        await tx.routineDay.createMany({
+          data: weekdays.map((weekday) => ({ routineId: req.params.id, weekday })),
+        });
+      }
+
+      return updated;
+    });
+
+    res.json(routine);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/routines/:id/habits/reorder  -- persist a new habit order
+// body: { order: [routineHabitId, ...] }  (full list, in the new order)
+routinesRouter.patch("/:id/habits/reorder", async (req, res, next) => {
+  try {
+    const { order } = req.body;
+    if (!Array.isArray(order) || order.length === 0) {
+      return res.status(400).json({ error: "order must be a non-empty array" });
+    }
+
+    const owned = await prisma.routineHabit.count({
+      where: { id: { in: order }, routineId: req.params.id },
+    });
+    if (owned !== order.length) {
+      return res.status(400).json({ error: "order includes a habit not in this routine" });
+    }
+
+    await prisma.$transaction(
+      order.map((routineHabitId, position) =>
+        prisma.routineHabit.update({
+          where: { id: routineHabitId },
+          data: { position },
+        })
+      )
+    );
+
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/routines/:id/history?limit=14
 // Past sessions for this routine, most recent first, each with its
 // per-habit log times (for "when did I actually do this").

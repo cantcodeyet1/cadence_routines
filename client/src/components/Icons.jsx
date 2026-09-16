@@ -137,6 +137,14 @@ export function IconCountUp(props) {
   );
 }
 
+export function IconQuote(props) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" {...props}>
+      <path d="M9.5 6C6.5 7 4.5 9.8 4.5 13c0 2.5 1.6 4.2 3.6 4.2 1.8 0 3.1-1.3 3.1-3 0-1.6-1.1-2.8-2.6-2.8-.3 0-.6 0-.8.1.3-1.6 1.6-3.1 3.2-3.7L9.5 6zm9 0c-3 1-5 3.8-5 7 0 2.5 1.6 4.2 3.6 4.2 1.8 0 3.1-1.3 3.1-3 0-1.6-1.1-2.8-2.6-2.8-.3 0-.6 0-.8.1.3-1.6 1.6-3.1 3.2-3.7L18.5 6z" />
+    </svg>
+  );
+}
+
 export function IconEdit(props) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" {...props}>
