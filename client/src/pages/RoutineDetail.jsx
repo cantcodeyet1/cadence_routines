@@ -245,13 +245,13 @@ export function RoutineDetail() {
           right: 0,
           bottom: 76,
           padding: "14px 20px",
-          background: "linear-gradient(to top, var(--cream) 60%, transparent)",
-          pointerEvents: "none",
+          background: "var(--cream)",
+          borderTop: "2px solid var(--border-soft)",
         }}
       >
         <button
           className="btn"
-          style={{ background: routine.color, pointerEvents: "auto" }}
+          style={{ background: routine.color }}
           onClick={() => navigate(`/routines/${routine.id}/session`)}
         >
           <IconPlay color="#fff" width={18} height={18} />
