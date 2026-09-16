@@ -5,7 +5,17 @@ import { HabitPicker, TYPES } from "../components/HabitPicker.jsx";
 import { DraggableList } from "../components/DraggableList.jsx";
 import { IconBack, IconPlus, IconTrash, IconQuote } from "../components/Icons.jsx";
 
-const COLORS = ["#7C5CFC", "#4C6EF5", "#06B6A4", "#FF6B35", "#FFB020"];
+const COLORS = [
+  "#7C5CFC", // purple
+  "#4C6EF5", // indigo
+  "#0EA5E9", // sky
+  "#06B6A4", // teal
+  "#22C55E", // green
+  "#FFB020", // amber
+  "#FF6B35", // orange
+  "#EF4444", // red
+  "#EC4899", // pink
+];
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
 const DAY_VALUES = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun, matching getDay()'s 0=Sun
 

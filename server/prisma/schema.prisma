@@ -74,7 +74,9 @@ model RoutineSession {
   note        String?
   logs        HabitLog[]
 
-  @@unique([routineId, date])
+  // Intentionally no unique([routineId, date]) - a routine can be run more
+  // than once on the same day (e.g. a stretch routine morning and night).
+  @@index([routineId, date])
 }
 
 model HabitLog {

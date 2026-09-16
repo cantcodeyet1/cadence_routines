@@ -61,7 +61,7 @@ export function DraggableList({ items, getKey, onReorder, onDragEnd, renderConte
             padding: "10px 12px",
             boxShadow: dragIndex === i ? "3px 3px 0 var(--ink)" : "none",
             position: "relative",
-            zIndex: dragIndex === i ? 2 : 1,
+            zIndex: dragIndex === i ? 2 : "auto",
           }}
         >
           <div style={{ width: 16, fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { useCachedData } from "../lib/cache.js";
@@ -47,7 +47,7 @@ export function RoutineDetail() {
   const { data: routine, error, refresh } = useCachedData(`routine:${routineId}:${today}`, () =>
     api.getRoutine(routineId, today)
   );
-  const { data: history } = useCachedData(`routine-history:${routineId}`, () =>
+  const { data: history, refresh: refreshHistory } = useCachedData(`routine-history:${routineId}`, () =>
     api.getRoutineHistory(routineId, 10)
   );
 
@@ -78,6 +78,11 @@ export function RoutineDetail() {
       await refresh();
       setHabitOrder(null);
     }
+  }
+
+  async function deleteSession(sessionId) {
+    await api.deleteSession(sessionId);
+    await Promise.all([refreshHistory(), refresh()]);
   }
 
   return (
@@ -232,7 +237,7 @@ export function RoutineDetail() {
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {history?.sessions.map((s) => (
-              <SessionCard key={s.id} session={s} />
+              <SessionCard key={s.id} session={s} onDelete={deleteSession} />
             ))}
           </div>
         </div>
@@ -243,10 +248,11 @@ export function RoutineDetail() {
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 76,
+          bottom: 88,
           padding: "14px 20px",
           background: "var(--cream)",
           borderTop: "2px solid var(--border-soft)",
+          zIndex: 5,
         }}
       >
         <button
@@ -264,63 +270,136 @@ export function RoutineDetail() {
   );
 }
 
-function SessionCard({ session: s }) {
+const SWIPE_REVEAL = 84;
+
+function SessionCard({ session: s, onDelete }) {
   const [open, setOpen] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragState = useRef(null);
   const doneCount = s.logs.filter((l) => !l.skipped).length;
 
-  return (
-    <div className="card" style={{ padding: "12px 14px", cursor: "pointer" }} onClick={() => setOpen((o) => !o)}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, flexShrink: 0 }}>{formatDate(s.date)}</div>
-        <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>
-          {s.startedAt && s.completedAt
-            ? `${formatClock(s.startedAt)} – ${formatClock(s.completedAt)}`
-            : formatClock(s.completedAt)}
-        </div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: doneCount === s.logs.length ? "var(--teal)" : "var(--muted)" }}>
-          {doneCount}/{s.logs.length}
-        </div>
-        <IconChevronRight
-          width={13}
-          height={13}
-          color="var(--muted-2)"
-          style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }}
-        />
-      </div>
+  function onPointerDown(e) {
+    dragState.current = { startX: e.clientX, startY: e.clientY, startDragX: dragX, moved: false, horizontal: null };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
 
-      {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-soft)" }}>
-          {s.logs.map((l) => (
-            <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-              <div style={{ width: 13, fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
-                {l.position}
-              </div>
-              <div
-                style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: l.skipped ? "var(--red)" : "var(--teal)",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, fontWeight: 700, color: l.skipped ? "var(--muted)" : "var(--ink)" }}>
-                {l.habitName}
-              </div>
-              {l.skipped ? (
-                <div style={{ color: "var(--red)", fontWeight: 600 }}>skipped</div>
-              ) : (
-                <div style={{ color: "var(--muted)", fontWeight: 600 }}>
-                  {l.startedAt && l.completedAt
-                    ? `${formatClock(l.startedAt)} – ${formatClock(l.completedAt)}`
-                    : formatClock(l.completedAt)}
-                  {formatDuration(l.durationSec) ? ` · ${formatDuration(l.durationSec)}` : ""}
-                </div>
-              )}
-            </div>
-          ))}
+  function onPointerMove(e) {
+    const st = dragState.current;
+    if (!st) return;
+    const dx = e.clientX - st.startX;
+    const dy = e.clientY - st.startY;
+    if (st.horizontal === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      st.horizontal = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!st.horizontal) return;
+    st.moved = true;
+    setDragging(true);
+    setDragX(Math.min(0, Math.max(-SWIPE_REVEAL, st.startDragX + dx)));
+  }
+
+  function onPointerUp() {
+    const st = dragState.current;
+    dragState.current = null;
+    setDragging(false);
+    if (!st) return;
+    if (st.horizontal) {
+      setDragX((x) => (x < -SWIPE_REVEAL / 2 ? -SWIPE_REVEAL : 0));
+    } else if (!st.moved) {
+      setOpen((o) => !o);
+    }
+  }
+
+  return (
+    <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
+      <button
+        onClick={() => onDelete(s.id)}
+        aria-label="Delete session"
+        style={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: SWIPE_REVEAL,
+          border: "none",
+          background: "var(--red)",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+        }}
+      >
+        <IconTrash width={18} height={18} color="#fff" />
+      </button>
+      <div
+        className="card"
+        style={{
+          padding: "12px 14px",
+          cursor: "pointer",
+          position: "relative",
+          background: "var(--cream)",
+          touchAction: "pan-y",
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? "none" : "transform 0.2s ease",
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, flexShrink: 0 }}>{formatDate(s.date)}</div>
+          <div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: "var(--muted-2)" }}>
+            {s.startedAt && s.completedAt
+              ? `${formatClock(s.startedAt)} – ${formatClock(s.completedAt)}`
+              : formatClock(s.completedAt)}
+          </div>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: doneCount === s.logs.length ? "var(--teal)" : "var(--muted)" }}>
+            {doneCount}/{s.logs.length}
+          </div>
+          <IconChevronRight
+            width={13}
+            height={13}
+            color="var(--muted-2)"
+            style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }}
+          />
         </div>
-      )}
+
+        {open && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--border-soft)" }}>
+            {s.logs.map((l) => (
+              <div key={l.habitId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+                <div style={{ width: 13, fontSize: 10.5, fontWeight: 700, color: "var(--muted-2)", flexShrink: 0 }}>
+                  {l.position}
+                </div>
+                <div
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: l.skipped ? "var(--red)" : "var(--teal)",
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1, fontWeight: 700, color: l.skipped ? "var(--muted)" : "var(--ink)" }}>
+                  {l.habitName}
+                </div>
+                {l.skipped ? (
+                  <div style={{ color: "var(--red)", fontWeight: 600 }}>skipped</div>
+                ) : (
+                  <div style={{ color: "var(--muted)", fontWeight: 600 }}>
+                    {l.startedAt && l.completedAt
+                      ? `${formatClock(l.startedAt)} – ${formatClock(l.completedAt)}`
+                      : formatClock(l.completedAt)}
+                    {formatDuration(l.durationSec) ? ` · ${formatDuration(l.durationSec)}` : ""}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

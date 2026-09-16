@@ -5,8 +5,11 @@ import { toDateOnly, todayDateOnly, weekdayOf } from "../lib/dates.js";
 export const routinesRouter = Router();
 
 async function routineCardData(routine, dateOnly) {
-  const session = await prisma.routineSession.findUnique({
-    where: { routineId_date: { routineId: routine.id, date: dateOnly } },
+  // A routine can be run more than once a day, so "today's" progress is
+  // whichever session was started most recently on this date.
+  const session = await prisma.routineSession.findFirst({
+    where: { routineId: routine.id, date: dateOnly },
+    orderBy: { startedAt: "desc" },
     include: { logs: true },
   });
 
@@ -73,8 +76,9 @@ routinesRouter.get("/:id", async (req, res, next) => {
     });
     if (!routine) return res.status(404).json({ error: "Routine not found" });
 
-    const session = await prisma.routineSession.findUnique({
-      where: { routineId_date: { routineId: routine.id, date: dateOnly } },
+    const session = await prisma.routineSession.findFirst({
+      where: { routineId: routine.id, date: dateOnly },
+      orderBy: { startedAt: "desc" },
       include: { logs: true },
     });
     const logsByHabitId = new Map((session?.logs ?? []).map((l) => [l.habitId, l]));
@@ -190,7 +194,7 @@ routinesRouter.get("/:id/history", async (req, res, next) => {
     const limit = Math.min(Number(req.query.limit) || 14, 60);
     const sessions = await prisma.routineSession.findMany({
       where: { routineId: req.params.id, completedAt: { not: null } },
-      orderBy: { date: "desc" },
+      orderBy: [{ date: "desc" }, { startedAt: "desc" }],
       take: limit,
       include: { logs: { include: { habit: true } } },
     });

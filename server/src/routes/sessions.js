@@ -6,20 +6,47 @@ import { computeNextHabitStreak, computeNextRoutineStreak } from "../lib/streaks
 export const sessionsRouter = Router();
 
 // POST /api/sessions/start  { routineId, date? }
-// Finds today's session for this routine, creating it (with empty logs) if needed.
+// A routine can be played more than once a day, so this doesn't just
+// find-or-create today's session: if the most recent session for today is
+// already complete, "starting" begins a genuinely new run. It only resumes
+// the latest session when that run is still in progress (nothing skipped
+// past, no completedAt yet) - covers a stray double-call (e.g. React
+// StrictMode) or navigating back into an unfinished routine, without
+// letting a finished run block starting a fresh one.
 sessionsRouter.post("/start", async (req, res, next) => {
   try {
     const { routineId, date } = req.body;
     const dateOnly = date ? toDateOnly(date) : todayDateOnly();
 
-    const session = await prisma.routineSession.upsert({
-      where: { routineId_date: { routineId, date: dateOnly } },
-      update: {},
-      create: { routineId, date: dateOnly },
+    const latest = await prisma.routineSession.findFirst({
+      where: { routineId, date: dateOnly },
+      orderBy: { startedAt: "desc" },
+      include: { logs: true },
+    });
+
+    if (latest && !latest.completedAt) {
+      return res.status(200).json(latest);
+    }
+
+    const session = await prisma.routineSession.create({
+      data: { routineId, date: dateOnly },
       include: { logs: true },
     });
 
     res.status(201).json(session);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/sessions/:sessionId
+// Removes a session and its logs (e.g. clearing out a stray or duplicate
+// run). Doesn't retroactively recompute streaks - those only move forward
+// as sessions complete, never backward on delete.
+sessionsRouter.delete("/:sessionId", async (req, res, next) => {
+  try {
+    await prisma.routineSession.delete({ where: { id: req.params.sessionId } });
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

@@ -36,6 +36,7 @@ export const api = {
 
   startSession: (routineId, date) =>
     request("/api/sessions/start", { method: "POST", body: JSON.stringify({ routineId, date }) }),
+  deleteSession: (sessionId) => request(`/api/sessions/${sessionId}`, { method: "DELETE" }),
   logHabit: (sessionId, data) =>
     request(`/api/sessions/${sessionId}/logs`, { method: "POST", body: JSON.stringify(data) }),
   completeSession: (sessionId, note) =>
