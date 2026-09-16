@@ -249,7 +249,7 @@ export function AddRoutine() {
       </div>
 
       <div style={{ padding: "14px 20px 26px" }}>
-        <button className="btn indigo" onClick={submit} disabled={saving}>
+        <button className={`btn indigo${saving ? " pressed" : ""}`} onClick={submit} disabled={saving}>
           {saving ? "Saving..." : isEdit ? "Save changes" : "Create routine"}
         </button>
       </div>

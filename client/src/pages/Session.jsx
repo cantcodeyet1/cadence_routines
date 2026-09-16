@@ -7,6 +7,18 @@ import { TIERS, NAMES } from "../lib/milestones.js";
 import { TimerRing } from "../components/TimerRing.jsx";
 import { IconBack, IconCheck, IconSkip, IconPause, IconFlame, IconQuote } from "../components/Icons.jsx";
 
+// Lightens (positive percent) or darkens (negative percent) a hex color -
+// used to build a gradient/ribbon shades from a routine's own color without
+// needing a fixed palette of pre-made variants for every accent color.
+function shade(hex, percent) {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const amt = Math.round(2.55 * percent);
+  const r = Math.max(0, Math.min(255, (num >> 16) + amt));
+  const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + amt));
+  const b = Math.max(0, Math.min(255, (num & 0x0000ff) + amt));
+  return `#${(0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1)}`;
+}
+
 function formatTime(totalSec) {
   const s = Math.max(0, Math.round(totalSec));
   const m = Math.floor(s / 60);
@@ -29,6 +41,8 @@ export function Session() {
   const [summary, setSummary] = useState(null);
   const [celebrated, setCelebrated] = useState(false);
   const [routineNote, setRoutineNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const tickRef = useRef(null);
   const habitStartRef = useRef(null);
 
@@ -90,16 +104,21 @@ export function Session() {
     // ticking effect stops as soon as noteHabit is set) - normalize it to
     // true elapsed time regardless of whether this habit counts up or down.
     const elapsed = habit.type === "COUNTDOWN" ? (habit.targetSec ?? 0) - seconds : seconds;
-    await api.logHabit(sessionId, {
-      habitId: habit.id,
-      startedAt: habitStartRef.current?.toISOString(),
-      completedAt: new Date().toISOString(),
-      durationSec: habit.type === "TICK" ? null : elapsed,
-      note: noteText.trim() || null,
-    });
-    setLogs((prev) => ({ ...prev, [habit.id]: { completedAt: new Date().toISOString(), note: noteText } }));
-    setNoteHabit(null);
-    advance();
+    setSavingNote(true);
+    try {
+      await api.logHabit(sessionId, {
+        habitId: habit.id,
+        startedAt: habitStartRef.current?.toISOString(),
+        completedAt: new Date().toISOString(),
+        durationSec: habit.type === "TICK" ? null : elapsed,
+        note: noteText.trim() || null,
+      });
+      setLogs((prev) => ({ ...prev, [habit.id]: { completedAt: new Date().toISOString(), note: noteText } }));
+      setNoteHabit(null);
+      advance();
+    } finally {
+      setSavingNote(false);
+    }
   }
 
   function skipCurrent() {
@@ -122,17 +141,22 @@ export function Session() {
   }
 
   async function finishRoutine() {
-    const result = await api.completeSession(sessionId, routineNote.trim() || null);
-    setSummary(result);
-    // The routine and every habit it contains just changed streak/XP state -
-    // drop the other pages' cached copies so Home, Habits and Milestones
-    // pick up the new numbers on next visit instead of showing stale ones.
-    invalidate([
-      `routines:${toDateKey(new Date())}`,
-      "routines:all",
-      "habits",
-      ...routine.habits.map((h) => `habit:${h.id}`),
-    ]);
+    setFinishing(true);
+    try {
+      const result = await api.completeSession(sessionId, routineNote.trim() || null);
+      setSummary(result);
+      // The routine and every habit it contains just changed streak/XP state -
+      // drop the other pages' cached copies so Home, Habits and Milestones
+      // pick up the new numbers on next visit instead of showing stale ones.
+      invalidate([
+        `routines:${toDateKey(new Date())}`,
+        "routines:all",
+        "habits",
+        ...routine.habits.map((h) => `habit:${h.id}`),
+      ]);
+    } finally {
+      setFinishing(false);
+    }
   }
 
   if (!routine) {
@@ -148,6 +172,7 @@ export function Session() {
         note={routineNote}
         setNote={setRoutineNote}
         onDone={finishRoutine}
+        saving={finishing}
       />
     );
   }
@@ -268,7 +293,7 @@ export function Session() {
           </button>
         ) : (
           <button className="icon-btn" style={{ borderRadius: 13 }} onClick={skipCurrent}>
-            <IconSkip color="#241E3D" />
+            <IconSkip style={{ transform: "scaleX(-1)" }} color="#241E3D" />
           </button>
         )}
       </div>
@@ -319,13 +344,14 @@ export function Session() {
             setNoteText("");
             saveNoteAndAdvance();
           }}
+          saving={savingNote}
         />
       )}
     </div>
   );
 }
 
-function CompleteNoteSheet({ habit, noteText, setNoteText, onSave, onSkip }) {
+function CompleteNoteSheet({ habit, noteText, setNoteText, onSave, onSkip, saving }) {
   return (
     <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 20 }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(36,30,61,0.55)" }} />
@@ -381,10 +407,23 @@ function CompleteNoteSheet({ habit, noteText, setNoteText, onSave, onSkip }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
-          <button className="btn" onClick={onSave}>Save &amp; continue</button>
+          <button className={`btn${saving ? " pressed" : ""}`} onClick={onSave} disabled={saving}>
+            Save &amp; continue
+          </button>
           <button
             onClick={onSkip}
-            style={{ background: "none", border: "none", color: "var(--muted)", fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 600, padding: 6, cursor: "pointer" }}
+            disabled={saving}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--muted)",
+              fontFamily: "var(--font-display)",
+              fontSize: 13,
+              fontWeight: 600,
+              padding: 6,
+              cursor: saving ? "default" : "pointer",
+              opacity: saving ? 0.5 : 1,
+            }}
           >
             Skip note
           </button>
@@ -394,7 +433,7 @@ function CompleteNoteSheet({ habit, noteText, setNoteText, onSave, onSkip }) {
   );
 }
 
-function RoutineWrapUp({ routine, logs, note, setNote, onDone }) {
+function RoutineWrapUp({ routine, logs, note, setNote, onDone, saving }) {
   const doneCount = routine.habits.filter((h) => logs[h.id]?.completedAt).length;
   return (
     <div className="page">
@@ -420,7 +459,9 @@ function RoutineWrapUp({ routine, logs, note, setNote, onDone }) {
       </div>
 
       <div style={{ marginTop: "auto", padding: "16px 20px 26px" }}>
-        <button className="btn purple" onClick={onDone}>Done for today</button>
+        <button className={`btn purple${saving ? " pressed" : ""}`} onClick={onDone} disabled={saving}>
+          Done for today
+        </button>
       </div>
     </div>
   );
@@ -471,14 +512,17 @@ function RoutineSummary({ routine, summary, onClose }) {
             background: "#fff",
             border: "2.5px solid var(--ink)",
             borderRadius: 16,
-            padding: "16px 18px",
+            padding: "30px 26px",
             display: "flex",
-            gap: 12,
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 10,
+            textAlign: "center",
             boxShadow: "3px 3px 0 var(--ink)",
           }}
         >
-          <IconQuote color={routine.color} style={{ flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 14.5, fontStyle: "italic", fontWeight: 600, lineHeight: 1.5 }}>{summary.quote}</div>
+          <IconQuote color={routine.color} />
+          <div style={{ fontSize: 15, fontStyle: "italic", fontWeight: 600, lineHeight: 1.5 }}>{summary.quote}</div>
         </div>
       )}
 
@@ -499,8 +543,16 @@ const CONFETTI = [
 ];
 
 function MilestoneReached({ routine, tier, name, nextTier, onContinue }) {
+  const ribbonColor = shade(routine.color, -35);
   return (
-    <div className="page" style={{ background: routine.color, position: "relative", overflow: "hidden" }}>
+    <div
+      className="page"
+      style={{
+        background: `linear-gradient(160deg, ${shade(routine.color, 18)} 0%, ${shade(routine.color, -18)} 100%)`,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
       {CONFETTI.map((c, i) => (
         <div
           key={i}
@@ -522,21 +574,50 @@ function MilestoneReached({ routine, tier, name, nextTier, onContinue }) {
         Milestone reached
       </div>
 
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 22 }}>
-        <div
-          style={{
-            width: 118,
-            height: 118,
-            borderRadius: "50%",
-            background: "var(--amber)",
-            border: "3px solid var(--ink)",
-            boxShadow: "6px 6px 0 rgba(0,0,0,0.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, color: "var(--ink)" }}>{tier}</div>
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 26 }}>
+        <div style={{ position: "relative", width: 176, height: 176 }}>
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: "50%",
+              width: 0,
+              height: 0,
+              borderLeft: "20px solid transparent",
+              borderRight: "20px solid transparent",
+              borderTop: `48px solid ${ribbonColor}`,
+              transform: "translateX(-50%) rotate(10deg) translateX(-22px)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 6,
+              left: "50%",
+              width: 0,
+              height: 0,
+              borderLeft: "20px solid transparent",
+              borderRight: "20px solid transparent",
+              borderTop: `48px solid ${ribbonColor}`,
+              transform: "translateX(-50%) rotate(-10deg) translateX(22px)",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "50%",
+              background: "var(--amber)",
+              border: "3px solid var(--ink)",
+              boxShadow: "6px 6px 0 rgba(0,0,0,0.25)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div style={{ position: "absolute", inset: 12, borderRadius: "50%", border: "2px dashed rgba(255,255,255,0.75)" }} />
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 50, fontWeight: 700, color: "var(--ink)" }}>{tier}</div>
+          </div>
         </div>
       </div>
 
@@ -548,19 +629,21 @@ function MilestoneReached({ routine, tier, name, nextTier, onContinue }) {
       </div>
 
       {nextTier && (
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 22 }}>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 26 }}>
           <div
             style={{
-              background: "rgba(255,255,255,0.16)",
-              border: "2px solid rgba(255,255,255,0.4)",
-              borderRadius: 12,
-              padding: "9px 16px",
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: "#fff",
+              background: "rgba(255,255,255,0.12)",
+              borderRadius: 14,
+              padding: "10px 22px",
+              textAlign: "center",
             }}
           >
-            Next up: Day {nextTier} &middot; only {nextTier - tier} to go
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: 1 }}>
+              Next up
+            </div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, color: "#fff", marginTop: 2 }}>
+              Day {nextTier} &middot; only {nextTier - tier} to go
+            </div>
           </div>
         </div>
       )}

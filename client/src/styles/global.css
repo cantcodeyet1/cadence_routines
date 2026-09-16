@@ -161,9 +161,19 @@ button:active {
   width: 100%;
 }
 
-.btn:active {
+.btn:active,
+.btn.pressed {
   transform: translate(2px, 2px);
   box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* Applied while an async action a button triggered is still in flight, so
+   the button stays visually "pressed" for the whole wait instead of
+   springing back up the instant a finger/pointer lifts - :active alone ends
+   as soon as the tap releases, well before the request resolves. */
+.icon-btn.pressed {
+  transform: translate(2px, 2px);
+  background: #F0E4CE;
 }
 
 .btn.secondary {

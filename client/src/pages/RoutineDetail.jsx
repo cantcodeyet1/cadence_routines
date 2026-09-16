@@ -285,8 +285,19 @@ function SessionCard({ session: s, onDelete }) {
   const [open, setOpen] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const dragState = useRef(null);
   const doneCount = s.logs.filter((l) => !l.skipped).length;
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await onDelete(s);
+    } catch (err) {
+      setDeleting(false);
+      throw err;
+    }
+  }
 
   function onPointerDown(e) {
     dragState.current = { startX: e.clientX, startY: e.clientY, startDragX: dragX, moved: false, horizontal: null };
@@ -322,7 +333,8 @@ function SessionCard({ session: s, onDelete }) {
   return (
     <div style={{ position: "relative", borderRadius: 14, overflow: "hidden" }}>
       <button
-        onClick={() => onDelete(s)}
+        onClick={handleDelete}
+        disabled={deleting}
         aria-label="Delete session"
         style={{
           position: "absolute",
@@ -336,7 +348,8 @@ function SessionCard({ session: s, onDelete }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          cursor: "pointer",
+          cursor: deleting ? "default" : "pointer",
+          opacity: deleting ? 0.6 : 1,
         }}
       >
         <IconTrash width={18} height={18} color="#fff" />
